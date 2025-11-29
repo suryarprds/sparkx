@@ -1,0 +1,43 @@
+# Database Configuration - YAML Format
+# Supports local SQLite and remote Azure PostgreSQL
+
+# Global Control: Set to true for SQLite, false for PostgreSQL
+is_local: true
+environments:
+  local:
+    name: "Local SQLite Development"
+    provider: "sqlite"
+    database_url: "file:./prisma/dev.db"
+    description: "Local SQLite database for development"
+    features:
+      - auto_create: true
+      - reset_on_start: false
+      - seed_data: true
+
+  remote:
+    name: "Azure PostgreSQL Production"
+    provider: "postgresql"
+    database_url: "postgresql://sparkxadmin:PSWD@sparkx.postgres.database.azure.com:5432/postgres?sslmode=require"
+    description: "Remote Azure PostgreSQL database"
+    features:
+      - ssl_required: true
+      - backup_enabled: true
+      - monitoring: true
+
+# Server Configuration
+server:
+  port: 3001
+  node_env: "development"
+  cors:
+    origin: "http://localhost:8080"
+    credentials: true
+  api:
+    base_url: "http://localhost:3001/api"
+    timeout: 30000
+    retry_attempts: 3
+
+# Prisma Configuration
+prisma:
+  log_level: "info"
+  log_queries: false
+  engine: "native"

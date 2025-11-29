@@ -29,6 +29,9 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      - name: Generate Prisma Client
+        run: npm run db:generate
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
@@ -62,4 +65,11 @@ jobs:
           app-name: 'sparkx'
           slot-name: 'Production'
           package: .
+
+      - name: 'Run Database Migrations'
+        run: |
+          npm run db:push
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          
           

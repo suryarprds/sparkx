@@ -20,7 +20,11 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:reset": "prisma db push --force-reset && npm run db:seed"
+    "db:reset": "prisma db push --force-reset && npm run db:seed",
+    "db:switch-local": "node scripts/setup-env.js local",
+    "db:switch-remote": "node scripts/setup-env.js remote",
+    "db:switch": "node scripts/setup-env.js",
+    "db:sync": "node scripts/setup-env.js && npm run db:generate && npm run db:push && npm run db:seed"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -97,6 +101,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "js-yaml": "^4.1.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",

@@ -6,9 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite" // Change to "postgresql" for cloud development
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+
+
+
 
 // ============================================================================
 // CORE ROBOT TABLES
