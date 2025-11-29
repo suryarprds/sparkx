@@ -1,0 +1,342 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 222 47% 11%;
+    --foreground: 180 100% 90%;
+
+    --card: 222 47% 14%;
+    --card-foreground: 180 100% 90%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 180 100% 90%;
+
+    --primary: 188 95% 50%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 222 47% 18%;
+    --secondary-foreground: 180 100% 90%;
+
+    --muted: 222 47% 18%;
+    --muted-foreground: 180 20% 60%;
+
+    --accent: 188 95% 50%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 180 100% 90%;
+
+    --border: 222 47% 20%;
+    --input: 222 47% 20%;
+    --ring: 188 95% 50%;
+
+    --radius: 0.75rem;
+
+    --success: 142 76% 36%;
+    --success-foreground: 180 100% 90%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    --tech-glow: 188 95% 50%;
+    --tech-dim: 188 50% 30%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(188 95% 50% / 0.2), hsl(200 100% 50% / 0.1));
+    --gradient-card: linear-gradient(145deg, hsl(222 47% 14%), hsl(222 47% 12%));
+    
+    --shadow-glow: 0 0 20px hsl(188 95% 50% / 0.3);
+    --shadow-card: 0 4px 20px hsl(222 47% 5% / 0.5);
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 188 95% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 188 95% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 188 95% 45%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --tech-glow: 188 95% 45%;
+    --tech-dim: 188 50% 70%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(188 95% 95% / 0.5), hsl(200 100% 97% / 0.3));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 98%));
+    
+    --shadow-glow: 0 0 20px hsl(188 95% 50% / 0.15);
+    --shadow-card: 0 4px 20px hsl(220 13% 91% / 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    overflow-x: hidden;
+    overflow-y: scroll !important; /* Force scrollbar to always show - prevents layout shift */
+    scrollbar-gutter: stable; /* Reserve space for scrollbar even when not needed */
+    width: 100%;
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    touch-action: pan-y pan-x;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+    overflow-y: auto !important; /* Prevent Radix from setting overflow:hidden */
+    width: 100% !important;
+    position: relative !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #root {
+    width: 100%;
+    overflow-x: hidden;
+    position: relative;
+    will-change: auto;
+    transform: translateZ(0); /* Create stacking context to isolate transforms */
+    backface-visibility: hidden;
+  }
+
+  /* Prevent zoom on form elements in mobile */
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+
+  /* Ensure portaled content doesn't affect body layout */
+  [data-radix-portal] {
+    position: fixed !important;
+    z-index: 9999;
+    contain: layout style paint;
+    transform: translateZ(0);
+  }
+
+  /* Prevent Radix UI from hiding body overflow or adding padding */
+  body[style*="overflow: hidden"],
+  body[style*="overflow:hidden"] {
+    overflow-y: auto !important;
+  }
+
+  body[style*="padding-right"],
+  body[style*="paddingRight"] {
+    padding-right: 0 !important;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary;
+  }
+}
+
+@layer utilities {
+  .glow-effect {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .card-gradient {
+    background: var(--gradient-card);
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      filter: brightness(1);
+    }
+    50% {
+      opacity: 0.8;
+      filter: brightness(1.2);
+    }
+  }
+
+  /* Chart styles for theme support */
+  .stroke-border {
+    stroke: hsl(var(--border));
+  }
+
+  .fill-muted-foreground {
+    fill: hsl(var(--muted-foreground));
+  }
+
+  /* Recharts text color fix */
+  .recharts-text {
+    fill: hsl(var(--muted-foreground));
+  }
+
+  .recharts-cartesian-axis-tick-value {
+    fill: hsl(var(--muted-foreground));
+  }
+
+  .recharts-legend-item-text {
+    color: hsl(var(--foreground)) !important;
+  }
+
+  /* Mobile-Friendly Utilities */
+  /* Touch-friendly button sizes */
+  .touch-target {
+    @apply min-h-12 min-w-12;
+  }
+
+  /* Prevent text truncation issues on mobile */
+  .break-text {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Safe area for notched devices */
+  @supports (padding: max(0px)) {
+    body {
+      padding-left: max(1rem, env(safe-area-inset-left));
+      padding-right: max(1rem, env(safe-area-inset-right));
+    }
+  }
+
+  /* Optimize for reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Improved touch feedback for interactive elements */
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    a,
+    [role="button"] {
+      @apply transition-colors duration-200;
+    }
+
+    button:active,
+    a:active,
+    [role="button"]:active {
+      @apply opacity-75;
+    }
+  }
+
+  /* Mobile-specific text sizing */
+  @media (max-width: 374px) {
+    body {
+      font-size: 14px;
+    }
+  }
+
+  /* Responsive aspect ratios */
+  @media (max-width: 640px) {
+    .aspect-video {
+      aspect-ratio: auto;
+      min-height: 200px;
+    }
+  }
+
+  /* Improve readability on small screens */
+  @media (max-width: 640px) {
+    h1 {
+      @apply text-2xl;
+    }
+
+    h2 {
+      @apply text-xl;
+    }
+
+    h3 {
+      @apply text-lg;
+    }
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  /* Better spacing for touch interactions */
+  button,
+  a,
+  [role="button"] {
+    @apply active:scale-95 transition-transform duration-150;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    a,
+    [role="button"] {
+      @apply active:scale-95;
+    }
+  }
+
+  /* Mobile-optimized containers */
+  .mobile-container {
+    @apply px-3 sm:px-4 md:px-6;
+  }
+
+  .mobile-safe {
+    @apply px-safe py-safe;
+  }
+
+  /* Landscape mode adjustments */
+  @media (max-height: 600px) and (orientation: landscape) {
+    .mobile-container {
+      @apply py-2;
+    }
+  }
+}
+

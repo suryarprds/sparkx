@@ -1,0 +1,509 @@
+// Prisma Schema for SparkX Robot Fleet Management
+// Supports both SQLite (local dev) and PostgreSQL (Azure production)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Change to "postgresql" for cloud development
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// CORE ROBOT TABLES
+// ============================================================================
+
+model Robot {
+  id                    String    @id
+  name                  String
+  model                 String
+  serialNumber          String    @unique @map("serial_number")
+  firmwareVersion       String?   @map("firmware_version")
+  hardwareVersion       String?   @map("hardware_version")
+  
+  // Operational Status
+  status                String    // 'online', 'charging', 'offline', 'error' - Current operational status
+  operationalMode       String?   @map("operational_mode") // 'autonomous', 'manual', 'standby'
+  currentTask           String?   @map("current_task")
+  
+  // Static Location Information (Deployment Site)
+  location              String?   // Physical location name/description
+  country               String?
+  state                 String?
+  region                String?
+  // Note: Real-time GPS position (latitude/longitude) is in RobotTelemetry
+  
+  // Static Specifications (Hardware Capabilities)
+  batteryCapacityKwh    Float?    @map("battery_capacity_kwh") // Max battery capacity
+  maxPayloadKg          Float?    @map("max_payload_kg")
+  operatingTempMinC     Int?      @map("operating_temp_min_c")
+  operatingTempMaxC     Int?      @map("operating_temp_max_c")
+  // Note: Real-time battery data (percentage, voltage, temperature) is in RobotTelemetry
+  
+  // Metadata
+  manufacturedDate      DateTime? @map("manufactured_date")
+  deploymentDate        DateTime? @map("deployment_date")
+  lastMaintenanceDate   DateTime? @map("last_maintenance_date")
+  nextMaintenanceDate   DateTime? @map("next_maintenance_date")
+  warrantyExpiryDate    DateTime? @map("warranty_expiry_date")
+  
+  // Timestamps
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  lastSeenAt            DateTime? @map("last_seen_at")
+  
+  // Soft Delete
+  isActive              Boolean   @default(true) @map("is_active")
+  decommissionedAt      DateTime? @map("decommissioned_at")
+  
+  // Relations
+  telemetry             RobotTelemetry[]
+  sensors               RobotSensor[]
+  cameras               RobotCamera[]
+  joints                RobotJoint[]
+  alerts                RobotAlert[]
+  diagnostics           RobotDiagnostic[]
+  maintenance           MaintenanceSchedule[]
+  configurations        RobotConfiguration[]
+  networkHandoffs       NetworkHandoff[]
+  batteryHealthHistory  BatteryHealthHistory[]
+  chargeHistory         ChargeHistory[]
+  componentHealth       ComponentHealth[]
+  predictiveAlerts      PredictiveAlert[]
+
+  @@index([status])
+  @@index([country, state, region])
+  @@index([model, status]) // Query robots by model and status
+  @@map("robots")
+}
+
+model RobotTelemetry {
+  id                     Int       @id @default(autoincrement())
+  robotId                String    @map("robot_id")
+  
+  // Real-time Power Metrics
+  batteryPercentage      Float     @map("battery_percentage") // Current battery level (0-100%)
+  batteryVoltage         Float?    @map("battery_voltage")
+  batteryCurrent         Float?    @map("battery_current")
+  batteryTemperatureC    Float?    @map("battery_temperature_c")
+  chargingStatus         Boolean   @default(false) @map("charging_status")
+  estimatedRuntimeMin    Int?      @map("estimated_runtime_minutes") // Estimated remaining runtime
+  
+  // Real-time Performance Metrics
+  cpuLoadPercentage      Float?    @map("cpu_load_percentage")
+  memoryUsagePercentage  Float?    @map("memory_usage_percentage")
+  diskUsagePercentage    Float?    @map("disk_usage_percentage")
+  temperatureC           Float?    @map("temperature_c") // System/CPU temperature
+  
+  // Real-time Connectivity Metrics
+  signalStrength         Float?    @map("signal_strength")
+  wifiStrength           String?   @map("wifi_strength")
+  cellularStrength       String?   @map("cellular_strength")
+  networkLatencyMs       Int?      @map("network_latency_ms")
+  
+  // Real-time Position & Motion (Current GPS location)
+  latitude               Float?    // Current GPS latitude
+  longitude              Float?    // Current GPS longitude
+  altitudeM              Float?    @map("altitude_m")
+  speedMps               Float?    @map("speed_mps")
+  headingDegrees         Float?    @map("heading_degrees")
+  
+  // Timestamp
+  recordedAt             DateTime  @default(now()) @map("recorded_at")
+  
+  // Relations
+  robot                  Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@unique([robotId, recordedAt])
+  @@index([robotId, recordedAt(sort: Desc)]) // Get latest telemetry efficiently
+  @@index([robotId, batteryPercentage]) // Query low battery robots
+  @@map("robot_telemetry")
+}
+
+model RobotSensor {
+  id                     Int       @id @default(autoincrement())
+  robotId                String    @map("robot_id")
+  
+  // IMU Data
+  imuRoll                Float?    @map("imu_roll")
+  imuPitch               Float?    @map("imu_pitch")
+  imuYaw                 Float?    @map("imu_yaw")
+  accelX                 Float?    @map("accel_x")
+  accelY                 Float?    @map("accel_y")
+  accelZ                 Float?    @map("accel_z")
+  gyroX                  Float?    @map("gyro_x")
+  gyroY                  Float?    @map("gyro_y")
+  gyroZ                  Float?    @map("gyro_z")
+  
+  // LiDAR Data
+  lidarStatus            String?   @map("lidar_status")
+  lidarScanRateHz        Int?      @map("lidar_scan_rate_hz")
+  lidarDetectedObstacles Int?      @map("lidar_detected_obstacles")
+  lidarMinDistanceM      Float?    @map("lidar_min_distance_m")
+  lidarMaxRangeM         Float?    @map("lidar_max_range_m")
+  lidarPointsPerScan     Int?      @map("lidar_points_per_scan")
+  
+  // Environmental Sensors
+  ambientTemperatureC    Float?    @map("ambient_temperature_c")
+  humidityPercentage     Float?    @map("humidity_percentage")
+  airPressureHpa         Float?    @map("air_pressure_hpa")
+  airQualityIndex        Int?      @map("air_quality_index")
+  ambientLightLux        Int?      @map("ambient_light_lux")
+  soundLevelDb           Float?    @map("sound_level_db")
+  
+  // Ultrasonic Sensors
+  ultrasonicFrontCm      Float?    @map("ultrasonic_front_cm")
+  ultrasonicRearCm       Float?    @map("ultrasonic_rear_cm")
+  ultrasonicLeftCm       Float?    @map("ultrasonic_left_cm")
+  ultrasonicRightCm      Float?    @map("ultrasonic_right_cm")
+  
+  // Timestamp
+  recordedAt             DateTime  @default(now()) @map("recorded_at")
+  
+  // Relations
+  robot                  Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, recordedAt])
+  @@map("robot_sensors")
+}
+
+model RobotCamera {
+  id                  Int       @id @default(autoincrement())
+  robotId             String    @map("robot_id")
+  
+  cameraName          String    @map("camera_name")
+  cameraType          String?   @map("camera_type")
+  cameraPosition      String?   @map("camera_position")
+  
+  status              String    // 'active', 'inactive', 'error'
+  fps                 Int?
+  resolutionWidth     Int?      @map("resolution_width")
+  resolutionHeight    Int?      @map("resolution_height")
+  
+  // Quality Metrics
+  exposureTimeMs      Float?    @map("exposure_time_ms")
+  gain                Float?
+  whiteBalance        Int?      @map("white_balance")
+  
+  // Operational Data
+  framesCaptured      Int       @default(0) @map("frames_captured")
+  lastFrameAt         DateTime? @map("last_frame_at")
+  
+  // Timestamps
+  recordedAt          DateTime  @default(now()) @map("recorded_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  robot               Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId])
+  @@map("robot_cameras")
+}
+
+model RobotJoint {
+  id                      Int       @id @default(autoincrement())
+  robotId                 String    @map("robot_id")
+  
+  jointName               String    @map("joint_name")
+  jointType               String?   @map("joint_type")
+  jointIndex              Int?      @map("joint_index")
+  
+  // Position & Motion
+  currentPositionDeg      Float?    @map("current_position_deg")
+  targetPositionDeg       Float?    @map("target_position_deg")
+  velocityDegPerSec       Float?    @map("velocity_deg_per_sec")
+  accelerationDegPerSec2  Float?    @map("acceleration_deg_per_sec2")
+  
+  // Load & Torque
+  currentTorqueNm         Float?    @map("current_torque_nm")
+  maxTorqueNm             Float?    @map("max_torque_nm")
+  loadPercentage          Float?    @map("load_percentage")
+  
+  // Temperature & Health
+  temperatureC            Float?    @map("temperature_c")
+  status                  String?   // 'operational', 'warning', 'error', 'disabled'
+  errorCode               String?   @map("error_code")
+  
+  // Limits
+  minPositionLimitDeg     Float?    @map("min_position_limit_deg")
+  maxPositionLimitDeg     Float?    @map("max_position_limit_deg")
+  
+  // Timestamp
+  recordedAt              DateTime  @default(now()) @map("recorded_at")
+  
+  // Relations
+  robot                   Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, recordedAt])
+  @@index([robotId, jointName]) // Query specific joint history
+  @@index([status]) // Find all problematic joints across fleet
+  @@map("robot_joints")
+}
+
+// ============================================================================
+// ALERT & MONITORING TABLES
+// ============================================================================
+
+model RobotAlert {
+  id               Int       @id @default(autoincrement())
+  robotId          String    @map("robot_id")
+  
+  alertType        String    @map("alert_type")
+  severity         String    // 'critical', 'warning', 'info'
+  
+  title            String
+  message          String
+  errorCode        String?   @map("error_code")
+  
+  // State Management
+  isAcknowledged   Boolean   @default(false) @map("is_acknowledged")
+  acknowledgedAt   DateTime? @map("acknowledged_at")
+  acknowledgedBy   String?   @map("acknowledged_by")
+  
+  isResolved       Boolean   @default(false) @map("is_resolved")
+  resolvedAt       DateTime? @map("resolved_at")
+  resolvedBy       String?   @map("resolved_by")
+  resolutionNotes  String?   @map("resolution_notes")
+  
+  // Timestamp
+  createdAt        DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  robot            Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, createdAt])
+  @@index([severity, isResolved]) // Find critical unresolved alerts
+  @@index([isAcknowledged, isResolved]) // Dashboard queries
+  @@index([robotId, severity, isResolved]) // Robot-specific critical alerts
+  @@map("robot_alerts")
+}
+
+model RobotDiagnostic {
+  id                    Int       @id @default(autoincrement())
+  robotId               String    @map("robot_id")
+  
+  // System Health
+  overallHealthScore    Float?    @map("overall_health_score")
+  healthStatus          String?   @map("health_status")
+  
+  // Uptime Metrics
+  uptimeHours           Float?    @map("uptime_hours")
+  uptimePercentage      Float?    @map("uptime_percentage")
+  totalRuntimeHours     Float?    @map("total_runtime_hours")
+  
+  // Performance Indicators
+  missionSuccessRate    Float?    @map("mission_success_rate")
+  errorCount24h         Int?      @map("error_count_24h")
+  warningCount24h       Int?      @map("warning_count_24h")
+  
+  // Resource Usage
+  storageTotalGb        Int?      @map("storage_total_gb")
+  storageUsedGb         Int?      @map("storage_used_gb")
+  storageAvailableGb    Int?      @map("storage_available_gb")
+  
+  // Network Statistics
+  packetsSent           Int?      @map("packets_sent")
+  packetsReceived       Int?      @map("packets_received")
+  bytesSent             Int?      @map("bytes_sent")
+  bytesReceived         Int?      @map("bytes_received")
+  networkErrors         Int?      @map("network_errors")
+  packetLossPercent     Float?    @map("packet_loss_percent")
+  networkLatencyMs      Int?      @map("network_latency_ms")
+  uptimeSeconds         Int?      @map("uptime_seconds")
+  
+  // Bandwidth Metrics
+  uploadRateMbps        Float?    @map("upload_rate_mbps")
+  downloadRateMbps      Float?    @map("download_rate_mbps")
+  totalUploadedBytes    BigInt?   @map("total_uploaded_bytes")
+  totalDownloadedBytes  BigInt?   @map("total_downloaded_bytes")
+  
+  // Timestamp
+  recordedAt            DateTime  @default(now()) @map("recorded_at")
+  
+  // Relations
+  robot                 Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, recordedAt])
+  @@map("robot_diagnostics")
+}
+
+// ============================================================================
+// MAINTENANCE & UPDATES TABLES
+// ============================================================================
+
+model MaintenanceSchedule {
+  id                    Int       @id @default(autoincrement())
+  robotId               String    @map("robot_id")
+  
+  maintenanceType       String    @map("maintenance_type")
+  title                 String
+  description           String?
+  
+  // Scheduling
+  scheduledDate         DateTime  @map("scheduled_date")
+  estimatedDurationHours Float?   @map("estimated_duration_hours")
+  priority              String?
+  
+  // Status
+  status                String
+  
+  // Completion Details
+  startedAt             DateTime? @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  performedBy           String?   @map("performed_by")
+  actualDurationHours   Float?    @map("actual_duration_hours")
+  
+  // Parts & Costs
+  partsReplaced         String?   @map("parts_replaced")
+  totalCost             Float?    @map("total_cost")
+  
+  notes                 String?
+  
+  // Timestamps
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  robot                 Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, scheduledDate])
+  @@index([status, scheduledDate]) // Upcoming maintenance by status
+  @@index([robotId, status]) // Robot-specific maintenance status
+  @@map("maintenance_schedules")
+}
+
+model NetworkHandoff {
+  id              Int       @id @default(autoincrement())
+  robotId         String    @map("robot_id")
+  
+  fromNetwork     String    @map("from_network")
+  toNetwork       String    @map("to_network")
+  reason          String?
+  durationMs      Int?      @map("duration_ms")
+  
+  // Timestamp
+  occurredAt      DateTime  @default(now()) @map("occurred_at")
+  
+  // Relations
+  robot           Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, occurredAt(sort: Desc)])
+  @@map("network_handoffs")
+}
+
+model BatteryHealthHistory {
+  id                    Int       @id @default(autoincrement())
+  robotId               String    @map("robot_id")
+  
+  healthPercentage      Float     @map("health_percentage")
+  cycleCount            Int       @map("cycle_count")
+  capacityMah           Int       @map("capacity_mah")
+  
+  // Timestamp
+  recordedAt            DateTime  @default(now()) @map("recorded_at")
+  
+  // Relations
+  robot                 Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, recordedAt(sort: Desc)])
+  @@map("battery_health_history")
+}
+
+model ChargeHistory {
+  id                    Int       @id @default(autoincrement())
+  robotId               String    @map("robot_id")
+  
+  cycleNumber           Int       @map("cycle_number")
+  chargeLevel           Float     @map("charge_level")
+  durationMinutes       Int       @map("duration_minutes")
+  temperatureC          Float     @map("temperature_c")
+  
+  // Timestamp
+  chargedAt             DateTime  @default(now()) @map("charged_at")
+  
+  // Relations
+  robot                 Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, chargedAt(sort: Desc)])
+  @@index([robotId, cycleNumber])
+  @@map("charge_history")
+}
+
+model ComponentHealth {
+  id                    Int       @id @default(autoincrement())
+  robotId               String    @map("robot_id")
+  
+  componentName         String    @map("component_name")
+  healthPercentage      Float     @map("health_percentage")
+  status                String    // 'excellent', 'good', 'fair', 'replace_soon', 'critical'
+  hoursRemaining        Float     @map("hours_remaining")
+  lastReplacedAt        DateTime? @map("last_replaced_at")
+  
+  // Timestamp
+  recordedAt            DateTime  @default(now()) @map("recorded_at")
+  
+  // Relations
+  robot                 Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, recordedAt(sort: Desc)])
+  @@index([robotId, componentName])
+  @@map("component_health")
+}
+
+model PredictiveAlert {
+  id                    Int       @id @default(autoincrement())
+  robotId               String    @map("robot_id")
+  
+  componentName         String    @map("component_name")
+  prediction            String
+  severity              String    // 'critical', 'warning', 'info'
+  confidencePercent     Int       @map("confidence_percent")
+  estimatedDays         Int       @map("estimated_days")
+  recommendedAction     String    @map("recommended_action")
+  
+  isAcknowledged        Boolean   @default(false) @map("is_acknowledged")
+  acknowledgedAt        DateTime? @map("acknowledged_at")
+  
+  // Timestamp
+  createdAt             DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  robot                 Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, createdAt(sort: Desc)])
+  @@index([severity, isAcknowledged])
+  @@map("predictive_alerts")
+}
+
+// ============================================================================
+// CONFIGURATION TABLES
+// ============================================================================
+
+model RobotConfiguration {
+  id              Int       @id @default(autoincrement())
+  robotId         String    @map("robot_id")
+  
+  configKey       String    @map("config_key")
+  configValue     String?   @map("config_value")
+  configType      String?   @map("config_type")
+  
+  category        String?
+  description     String?
+  
+  isEditable      Boolean   @default(true) @map("is_editable")
+  requiresRestart Boolean   @default(false) @map("requires_restart")
+  
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  updatedBy       String?   @map("updated_by")
+  
+  // Relations
+  robot           Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@unique([robotId, configKey])
+  @@index([category]) // Browse configs by category
+  @@index([robotId, category]) // Robot-specific config browsing
+  @@map("robot_configurations")
+}
