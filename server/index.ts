@@ -12,7 +12,8 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = parseInt(process.env.PORT || '3001', 10);
+// Azure App Service provides PORT via environment variable (usually 8080)
+const PORT = parseInt(process.env.PORT || process.env.WEBSITES_PORT || '3001', 10);
 const isProduction = process.env.NODE_ENV === 'production';
 
 console.log('🔧 Starting server with configuration:');
