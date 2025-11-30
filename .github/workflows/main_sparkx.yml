@@ -66,10 +66,6 @@ jobs:
             chmod +x node_modules/esbuild/bin/esbuild
           fi
 
-      - name: Run Database Migrations
-        run: npx prisma db push --skip-generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       
       - name: Login to Azure
         uses: azure/login@v2
