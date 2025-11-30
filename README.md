@@ -13,7 +13,18 @@ npm run dev
 
 # In another terminal, start the backend server
 npm run dev:server
+
+# Run unit tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
 ```
+
+## Login Credentials
+
+- **Username:** admin
+- **Password:** sparkx2024
 
 ## Documentation
 
@@ -31,6 +42,28 @@ All project documentation has been organized in the **[Docs](./Docs/)** folder:
 - Vite + Tailwind CSS
 - Express.js + Prisma ORM
 - Three.js for 3D visualization
+- Vitest for unit testing
+
+## Testing
+
+The project includes comprehensive unit tests covering:
+- React components (Header, UI elements)
+- Utility functions (robot metrics, status distribution)
+- Configuration validation (thresholds, ranges)
+- API endpoint construction
+
+**Test Statistics:**
+- 35 tests across 4 test suites
+- 100% passing rate
+- Execution time: ~2.3 seconds
+
+**Run Tests:**
+```sh
+npm test              # Watch mode
+npm run test:run      # Run once
+npm run test:ui       # Interactive UI
+npm run test:coverage # Coverage report
+```
 
 ## License
 

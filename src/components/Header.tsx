@@ -127,7 +127,13 @@ const Header = () => {
               
               <DropdownMenuSeparator />
               
-              <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive">
+              <DropdownMenuItem 
+                className="cursor-pointer text-destructive focus:text-destructive"
+                onClick={() => {
+                  localStorage.removeItem('isAuthenticated');
+                  navigate('/login');
+                }}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Logout</span>
               </DropdownMenuItem>

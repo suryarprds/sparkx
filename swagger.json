@@ -1,0 +1,1118 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SparkX Robot Fleet Management API",
+    "version": "1.0.0",
+    "description": "## Overview\n\nThe SparkX Robot Fleet Management API provides comprehensive endpoints for managing and monitoring a global fleet of autonomous robots.\n\n### Key Features\n- **Real-time Monitoring**: Live telemetry, sensor data, and GPS tracking\n- **Alert Management**: Create, acknowledge, and resolve system alerts\n- **Predictive Maintenance**: AI-powered maintenance scheduling and component health tracking\n- **Task Management**: Assign, track, and monitor robot tasks\n- **Analytics & Reporting**: Historical trends, fleet statistics, and performance metrics\n- **Global Fleet**: Manage 100+ robots across 6 countries and 40+ cities"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://sparkx.azurewebsites.net/api",
+      "description": "Production Server (Azure)"
+    }
+  ],
+  "tags": [
+    { "name": "Health", "description": "API health check endpoints" },
+    { "name": "Robots", "description": "Robot fleet management operations" },
+    { "name": "Telemetry", "description": "Real-time robot telemetry data" },
+    { "name": "Sensors", "description": "Sensor data from robots" },
+    { "name": "Alerts", "description": "Alert and notification management" },
+    { "name": "Maintenance", "description": "Maintenance scheduling and tracking" },
+    { "name": "Diagnostics", "description": "Robot diagnostic information" },
+    { "name": "Tasks", "description": "Task assignment and management" },
+    { "name": "Analytics", "description": "Historical data and analytics" },
+    { "name": "Statistics", "description": "Fleet-wide statistics and metrics" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Health check",
+        "description": "Returns the health status of the API server",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/robots": {
+      "get": {
+        "tags": ["Robots"],
+        "summary": "Get all robots",
+        "description": "Retrieve a list of all robots with optional filtering by status, country, region, or location",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by robot status (online, offline, charging, error)" },
+          { "name": "country", "in": "query", "schema": { "type": "string" }, "description": "Filter by country" },
+          { "name": "region", "in": "query", "schema": { "type": "string" }, "description": "Filter by region" },
+          { "name": "location", "in": "query", "schema": { "type": "string" }, "description": "Filter by location" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of robots retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Robot" }
+                }
+              }
+            }
+          },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}": {
+      "get": {
+        "tags": ["Robots"],
+        "summary": "Get robot by ID",
+        "description": "Retrieve detailed information about a specific robot including telemetry, sensors, cameras, joints, alerts, and diagnostics",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Robot ID (e.g., SPARKX-001)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Robot details retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RobotDetail" }
+              }
+            }
+          },
+          "404": { "description": "Robot not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/position": {
+      "patch": {
+        "tags": ["Robots"],
+        "summary": "Update robot position",
+        "description": "Update the GPS coordinates of a robot",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Robot ID" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["latitude", "longitude"],
+                "properties": {
+                  "latitude": { "type": "number", "format": "float", "example": 19.076 },
+                  "longitude": { "type": "number", "format": "float", "example": 72.8777 },
+                  "heading": { "type": "number", "format": "float", "example": 45.5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Position updated successfully" },
+          "400": { "description": "Invalid input" },
+          "404": { "description": "Robot not found" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/telemetry": {
+      "get": {
+        "tags": ["Telemetry"],
+        "summary": "Get robot telemetry history",
+        "description": "Retrieve historical telemetry data for a specific robot",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Robot ID" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 100 }, "description": "Maximum number of records" },
+          { "name": "hours", "in": "query", "schema": { "type": "integer", "default": 24 }, "description": "Time window in hours" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Telemetry data retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Telemetry" }
+                }
+              }
+            }
+          },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/sensors": {
+      "get": {
+        "tags": ["Sensors"],
+        "summary": "Get robot sensor data",
+        "description": "Retrieve sensor readings (IMU, LiDAR, environmental, ultrasonic) for a robot",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": { "description": "Sensor data retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/diagnostics": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Get robot diagnostics",
+        "description": "Retrieve diagnostic information including health scores, uptime, and system metrics",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Diagnostics retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/network-handoffs": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Get network handoff events",
+        "description": "Retrieve network transition history for connectivity monitoring",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Network handoffs retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/battery-health-history": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Get battery health history",
+        "description": "Retrieve historical battery health data for degradation analysis",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 12 } }
+        ],
+        "responses": {
+          "200": { "description": "Battery health history retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/charge-history": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Get charging history",
+        "description": "Retrieve charging cycle history",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Charge history retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/component-health": {
+      "get": {
+        "tags": ["Diagnostics"],
+        "summary": "Get component health status",
+        "description": "Retrieve health monitoring data for individual robot components",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Component health retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/predictive-alerts": {
+      "get": {
+        "tags": ["Alerts"],
+        "summary": "Get predictive maintenance alerts",
+        "description": "Retrieve AI-generated predictive maintenance alerts",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Predictive alerts retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/tasks": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "Get robot tasks",
+        "description": "Retrieve all tasks for a robot",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status (pending, in_progress, completed, failed, cancelled)" }
+        ],
+        "responses": {
+          "200": { "description": "Tasks retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/tasks/current": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "Get current task",
+        "description": "Retrieve the currently executing task for a robot",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Current task retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/tasks/pending": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "Get pending tasks",
+        "description": "Retrieve queued tasks awaiting execution",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Pending tasks retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/robots/{id}/tasks/history": {
+      "get": {
+        "tags": ["Tasks"],
+        "summary": "Get task history",
+        "description": "Retrieve completed, failed, or cancelled tasks",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": {
+          "200": { "description": "Task history retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/alerts": {
+      "get": {
+        "tags": ["Alerts"],
+        "summary": "Get all alerts",
+        "description": "Retrieve alerts with optional filtering",
+        "parameters": [
+          { "name": "severity", "in": "query", "schema": { "type": "string" }, "description": "Filter by severity (critical, warning, info)" },
+          { "name": "robotId", "in": "query", "schema": { "type": "string" }, "description": "Filter by robot ID" },
+          { "name": "resolved", "in": "query", "schema": { "type": "boolean" }, "description": "Filter by resolution status" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alerts retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Alert" }
+                }
+              }
+            }
+          },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/alerts/{id}/acknowledge": {
+      "patch": {
+        "tags": ["Alerts"],
+        "summary": "Acknowledge an alert",
+        "description": "Mark an alert as acknowledged",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "acknowledgedBy": { "type": "string", "example": "admin@sparkx.com" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Alert acknowledged successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/alerts/{id}/resolve": {
+      "patch": {
+        "tags": ["Alerts"],
+        "summary": "Resolve an alert",
+        "description": "Mark an alert as resolved with optional notes",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "resolvedBy": { "type": "string", "example": "admin@sparkx.com" },
+                  "resolutionNotes": { "type": "string", "example": "Rebooted robot and cleared error logs" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Alert resolved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/maintenance": {
+      "get": {
+        "tags": ["Maintenance"],
+        "summary": "Get maintenance schedules",
+        "description": "Retrieve maintenance schedules with optional filtering",
+        "parameters": [
+          { "name": "robotId", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "scheduled, in_progress, completed, cancelled" }
+        ],
+        "responses": {
+          "200": { "description": "Maintenance schedules retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/stats/fleet": {
+      "get": {
+        "tags": ["Statistics"],
+        "summary": "Get fleet statistics",
+        "description": "Retrieve overall fleet statistics including robot counts, alert counts, and averages",
+        "responses": {
+          "200": {
+            "description": "Fleet statistics retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalRobots": { "type": "integer" },
+                    "statusCounts": { "type": "object" },
+                    "unresolvedAlerts": { "type": "integer" },
+                    "criticalAlerts": { "type": "integer" },
+                    "averages": {
+                      "type": "object",
+                      "properties": {
+                        "battery": { "type": "number" },
+                        "temperature": { "type": "number" },
+                        "signal": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/battery-trends": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get battery trends",
+        "description": "Retrieve historical battery level trends for the last 24 hours",
+        "parameters": [
+          { "name": "region", "in": "query", "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Battery trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/temperature-trends": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get temperature trends",
+        "description": "Retrieve historical temperature trends for the last 24 hours",
+        "parameters": [
+          { "name": "region", "in": "query", "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Temperature trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/uptime-trends": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get uptime trends",
+        "description": "Retrieve fleet uptime and availability trends for the last 24 hours",
+        "responses": {
+          "200": { "description": "Uptime trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/active-idle-trends": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get active vs idle trends",
+        "description": "Retrieve active and idle robot counts over the last 24 hours",
+        "parameters": [
+          { "name": "region", "in": "query", "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Active/idle trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/alert-trends": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get alert trends",
+        "description": "Retrieve alert counts by severity over the last 24 hours",
+        "responses": {
+          "200": { "description": "Alert trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/sensor-health": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get sensor health distribution",
+        "description": "Retrieve sensor health statistics across the fleet",
+        "responses": {
+          "200": { "description": "Sensor health retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/firmware-distribution": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get firmware version distribution",
+        "description": "Retrieve count of robots per firmware version",
+        "responses": {
+          "200": { "description": "Firmware distribution retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/maintenance-status": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get maintenance status summary",
+        "description": "Retrieve aggregated maintenance statistics",
+        "responses": {
+          "200": { "description": "Maintenance status retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/network-latency": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get network latency by region",
+        "description": "Retrieve average network latency grouped by region",
+        "responses": {
+          "200": { "description": "Network latency retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/data-ingestion": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get data ingestion metrics",
+        "description": "Retrieve telemetry message ingestion rate over the last hour",
+        "responses": {
+          "200": { "description": "Data ingestion metrics retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/task-completion": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get task completion trends",
+        "description": "Retrieve task success and failure rates over the last 24 hours",
+        "parameters": [
+          { "name": "region", "in": "query", "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Task completion trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/resource-usage": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get resource usage trends",
+        "description": "Retrieve CPU and memory usage trends over the last 24 hours",
+        "responses": {
+          "200": { "description": "Resource usage trends retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/fleet-summary": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get fleet summary",
+        "description": "Retrieve comprehensive fleet statistics and metrics",
+        "responses": {
+          "200": { "description": "Fleet summary retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/analytics/robot-map-locations": {
+      "get": {
+        "tags": ["Analytics"],
+        "summary": "Get robot deployment map data",
+        "description": "Retrieve geographic locations of all robots with coordinates for map visualization",
+        "responses": {
+          "200": { "description": "Robot map locations retrieved successfully" },
+          "500": { "description": "Server error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message describing what went wrong",
+            "example": "Robot not found"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional error details (optional)",
+            "example": "Robot with ID SPARKX-999 does not exist in the database"
+          }
+        }
+      },
+      "Success": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        }
+      },
+      "Robot": {
+        "type": "object",
+        "description": "Robot entity with latest telemetry snapshot",
+        "required": ["id", "name", "status"],
+        "properties": {
+          "id": { 
+            "type": "string", 
+            "description": "Unique robot identifier",
+            "example": "SPARKX-001" 
+          },
+          "name": { 
+            "type": "string", 
+            "description": "Human-readable robot name",
+            "example": "SparkX Alpha" 
+          },
+          "status": { 
+            "type": "string", 
+            "enum": ["online", "offline", "charging", "error"], 
+            "description": "Current operational status",
+            "example": "online" 
+          },
+          "battery": { 
+            "type": "number", 
+            "format": "float", 
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Current battery level percentage (0-100)",
+            "example": 85.5 
+          },
+          "signal": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100, 
+            "description": "Network signal strength percentage (0-100)",
+            "example": 92.3 
+          },
+          "temperature": { 
+            "type": "number", 
+            "format": "float",
+            "description": "System temperature in Celsius",
+            "example": 42.5 
+          },
+          "location": { 
+            "type": "string",
+            "description": "Physical deployment location (City - State format)",
+            "example": "Mumbai - Maharashtra" 
+          },
+          "country": { 
+            "type": "string",
+            "description": "Country of deployment",
+            "example": "India" 
+          },
+          "state": { 
+            "type": "string",
+            "description": "State or province",
+            "example": "Maharashtra" 
+          },
+          "region": { 
+            "type": "string",
+            "description": "Geographic region",
+            "example": "South Asia" 
+          },
+          "lastUpdated": { 
+            "type": "string", 
+            "format": "date-time",
+            "description": "Timestamp of last communication",
+            "example": "2025-12-01T10:30:00Z"
+          },
+          "cpuLoad": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "CPU load percentage (0-100)",
+            "example": 35.2 
+          },
+          "gpsCoordinates": {
+            "type": "object",
+            "description": "Current GPS location",
+            "properties": {
+              "lat": { 
+                "type": "number", 
+                "format": "float",
+                "minimum": -90,
+                "maximum": 90,
+                "description": "Latitude coordinate",
+                "example": 19.076 
+              },
+              "lng": { 
+                "type": "number", 
+                "format": "float",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Longitude coordinate",
+                "example": 72.8777 
+              }
+            }
+          },
+          "connectivity": {
+            "type": "object",
+            "description": "Network connectivity status",
+            "properties": {
+              "wifi": { 
+                "type": "string",
+                "enum": ["Excellent", "Good", "Fair", "Poor"],
+                "description": "WiFi signal quality",
+                "example": "Excellent" 
+              },
+              "cellular": { 
+                "type": "string",
+                "enum": ["Excellent", "Good", "Fair", "Poor"],
+                "description": "Cellular signal quality",
+                "example": "Good" 
+              }
+            }
+          }
+        }
+      },
+      "RobotDetail": {
+        "type": "object",
+        "description": "Complete robot details with all related data",
+        "properties": {
+          "id": { 
+            "type": "string",
+            "description": "Unique robot identifier",
+            "example": "SPARKX-001"
+          },
+          "name": { 
+            "type": "string",
+            "description": "Robot display name",
+            "example": "SparkX Alpha"
+          },
+          "model": { 
+            "type": "string",
+            "description": "Robot model number",
+            "example": "SparkX-Pro-2024"
+          },
+          "serialNumber": { 
+            "type": "string",
+            "description": "Manufacturing serial number",
+            "example": "SN-2024-001-ALPHA"
+          },
+          "firmwareVersion": {
+            "type": "string",
+            "description": "Current firmware version",
+            "example": "3.0.0"
+          },
+          "hardwareVersion": {
+            "type": "string",
+            "description": "Hardware revision",
+            "example": "HW-v2.1"
+          },
+          "status": { 
+            "type": "string",
+            "enum": ["online", "offline", "charging", "error"],
+            "description": "Current operational status",
+            "example": "online"
+          },
+          "location": {
+            "type": "string",
+            "description": "Physical location",
+            "example": "Mumbai - Maharashtra"
+          },
+          "country": {
+            "type": "string",
+            "example": "India"
+          },
+          "region": {
+            "type": "string",
+            "example": "South Asia"
+          },
+          "telemetry": { 
+            "type": "array",
+            "description": "Latest telemetry record",
+            "items": { "$ref": "#/components/schemas/Telemetry" } 
+          },
+          "sensors": { 
+            "type": "array",
+            "description": "Latest sensor readings (IMU, LiDAR, environmental)",
+            "items": { "type": "object" } 
+          },
+          "cameras": { 
+            "type": "array",
+            "description": "Camera system status (Front and Rear)",
+            "items": { "type": "object" } 
+          },
+          "joints": { 
+            "type": "array",
+            "description": "Joint/motor status for all 16 humanoid joints",
+            "items": { "type": "object" } 
+          },
+          "alerts": { 
+            "type": "array",
+            "description": "Active unresolved alerts",
+            "items": { "$ref": "#/components/schemas/Alert" } 
+          },
+          "diagnostics": { 
+            "type": "array",
+            "description": "Latest diagnostic snapshot",
+            "items": { "type": "object" } 
+          },
+          "maintenance": { 
+            "type": "array",
+            "description": "Recent maintenance records (last 5)",
+            "items": { "type": "object" } 
+          }
+        }
+      },
+      "Telemetry": {
+        "type": "object",
+        "description": "Time-series telemetry data snapshot",
+        "properties": {
+          "id": { 
+            "type": "integer",
+            "description": "Telemetry record ID",
+            "example": 12345
+          },
+          "robotId": { 
+            "type": "string",
+            "description": "Associated robot ID",
+            "example": "SPARKX-001"
+          },
+          "batteryPercentage": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Current battery level (0-100%)",
+            "example": 87.5
+          },
+          "batteryVoltage": { 
+            "type": "number", 
+            "format": "float",
+            "description": "Battery voltage in volts",
+            "example": 48.2
+          },
+          "batteryCurrent": { 
+            "type": "number", 
+            "format": "float",
+            "description": "Current draw/charge in amperes (negative = charging)",
+            "example": -2.3
+          },
+          "batteryTemperatureC": { 
+            "type": "number", 
+            "format": "float",
+            "description": "Battery temperature in Celsius",
+            "example": 35.8
+          },
+          "chargingStatus": { 
+            "type": "boolean",
+            "description": "Is robot currently charging",
+            "example": false
+          },
+          "estimatedRuntimeMin": {
+            "type": "integer",
+            "description": "Estimated remaining runtime in minutes",
+            "example": 240
+          },
+          "cpuLoadPercentage": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "CPU utilization (0-100%)",
+            "example": 42.1
+          },
+          "memoryUsagePercentage": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "RAM usage (0-100%)",
+            "example": 68.5
+          },
+          "diskUsagePercentage": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Storage usage (0-100%)",
+            "example": 45.3
+          },
+          "temperatureC": { 
+            "type": "number", 
+            "format": "float",
+            "description": "System/CPU temperature in Celsius",
+            "example": 52.7
+          },
+          "signalStrength": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Overall network signal strength (0-100)",
+            "example": 88.9
+          },
+          "wifiStrength": { 
+            "type": "string",
+            "enum": ["Excellent", "Good", "Fair", "Poor"],
+            "description": "WiFi signal quality",
+            "example": "Good"
+          },
+          "cellularStrength": { 
+            "type": "string",
+            "enum": ["Excellent", "Good", "Fair", "Poor"],
+            "description": "Cellular signal quality",
+            "example": "Excellent"
+          },
+          "networkLatencyMs": { 
+            "type": "integer",
+            "description": "Network latency in milliseconds",
+            "example": 42
+          },
+          "latitude": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Current GPS latitude",
+            "example": 19.0760
+          },
+          "longitude": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Current GPS longitude",
+            "example": 72.8777
+          },
+          "altitudeM": { 
+            "type": "number", 
+            "format": "float",
+            "description": "Altitude in meters above sea level",
+            "example": 14.5
+          },
+          "speedMps": { 
+            "type": "number", 
+            "format": "float",
+            "description": "Movement speed in meters per second",
+            "example": 0.8
+          },
+          "headingDegrees": { 
+            "type": "number", 
+            "format": "float",
+            "minimum": 0,
+            "maximum": 360,
+            "description": "Heading direction in degrees (0-360, 0=North)",
+            "example": 135.5
+          },
+          "recordedAt": { 
+            "type": "string", 
+            "format": "date-time",
+            "description": "Timestamp when telemetry was recorded",
+            "example": "2025-12-01T10:30:15Z"
+          }
+        }
+      },
+      "Alert": {
+        "type": "object",
+        "description": "System alert or notification",
+        "required": ["id", "robotId", "alertType", "severity", "title", "message"],
+        "properties": {
+          "id": { 
+            "type": "integer",
+            "description": "Alert record ID",
+            "example": 789
+          },
+          "robotId": { 
+            "type": "string",
+            "description": "Robot that generated the alert",
+            "example": "SPARKX-001"
+          },
+          "alertType": { 
+            "type": "string",
+            "description": "Type of alert",
+            "enum": ["system_error", "overheating", "low_battery", "sensor_failure", "network_issue", "maintenance_due", "collision_warning", "custom"],
+            "example": "low_battery"
+          },
+          "severity": { 
+            "type": "string", 
+            "enum": ["critical", "warning", "info"],
+            "description": "Alert severity level",
+            "example": "warning"
+          },
+          "title": { 
+            "type": "string",
+            "description": "Brief alert title",
+            "example": "Low Battery Warning"
+          },
+          "message": { 
+            "type": "string",
+            "description": "Detailed alert message",
+            "example": "Battery level has dropped below 20%. Robot should return to charging station."
+          },
+          "errorCode": { 
+            "type": "string",
+            "description": "System error code (if applicable)",
+            "example": "ERR_BATT_LOW_001"
+          },
+          "isAcknowledged": { 
+            "type": "boolean",
+            "description": "Has alert been acknowledged by an operator",
+            "example": false
+          },
+          "acknowledgedAt": { 
+            "type": "string", 
+            "format": "date-time",
+            "description": "Timestamp when alert was acknowledged",
+            "example": "2025-12-01T10:35:00Z"
+          },
+          "acknowledgedBy": { 
+            "type": "string",
+            "description": "User who acknowledged the alert",
+            "example": "admin@sparkx.com"
+          },
+          "isResolved": { 
+            "type": "boolean",
+            "description": "Has the issue been resolved",
+            "example": false
+          },
+          "resolvedAt": { 
+            "type": "string", 
+            "format": "date-time",
+            "description": "Timestamp when alert was resolved",
+            "example": "2025-12-01T11:00:00Z"
+          },
+          "resolvedBy": { 
+            "type": "string",
+            "description": "User who resolved the alert",
+            "example": "admin@sparkx.com"
+          },
+          "resolutionNotes": { 
+            "type": "string",
+            "description": "Notes about how the issue was resolved",
+            "example": "Robot returned to charging station. Battery now at 95%."
+          },
+          "createdAt": { 
+            "type": "string", 
+            "format": "date-time",
+            "description": "Timestamp when alert was created",
+            "example": "2025-12-01T10:30:00Z"
+          },
+          "robot": {
+            "type": "object",
+            "description": "Simplified robot information",
+            "properties": {
+              "id": { 
+                "type": "string",
+                "example": "SPARKX-001"
+              },
+              "name": { 
+                "type": "string",
+                "example": "SparkX Alpha"
+              },
+              "location": { 
+                "type": "string",
+                "example": "Mumbai - Maharashtra"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

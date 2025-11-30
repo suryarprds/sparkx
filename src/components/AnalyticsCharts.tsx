@@ -97,16 +97,6 @@ export function AnalyticsCharts({ robotId }: AnalyticsChartsProps) {
 
   return (
     <div className="space-y-4">
-      {/* Robot-Specific Analytics Header */}
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-foreground mb-1">
-          Robot Analytics - {robotId || "Unknown"}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Historical performance data and predictive analytics for this specific robot
-        </p>
-      </div>
-      
       <Tabs defaultValue="battery" className="w-full">
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-secondary/20 h-auto p-1">
           <TabsTrigger value="battery" className="data-[state=active]:bg-background">
