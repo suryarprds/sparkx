@@ -21,16 +21,13 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '20.x'
+          node-version: '24.x'
 
       - name: npm install, build, and test
         run: |
           npm install
           npm run build --if-present
           npm run test --if-present
-
-      - name: Generate Prisma Client
-        run: npm run db:generate
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -50,29 +47,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
-        with:
-          node-version: '24.x'
-
-
-      - name: Install dependencies
-        run: npm ci --omit=dev
-
-      - name: Fix esbuild permissions
-        run: |
-          if [ -f node_modules/esbuild/bin/esbuild ]; then
-            chmod +x node_modules/esbuild/bin/esbuild
-          fi
-
       
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_99C03235D5134505BB99DF8AF757CF48 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_8164D48FFC3C442E921EA29FE6B8EA05 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_2A7C2E5659144EBFAB2F7C23B9F13FC8 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_C7E365A118E44562B371E5C4EFD36C51 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3C3C83CA4F2D48F2856392676CB2F60F }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_522B8BE7E1FC40CDA7DBCB5BA9536028 }}
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
@@ -81,5 +62,4 @@ jobs:
           app-name: 'sparkx'
           slot-name: 'Production'
           package: .
-          
           
