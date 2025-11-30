@@ -57,8 +57,8 @@ const Header = () => {
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-foreground">SparkX Control Center</h1>
-            <p className="text-xs text-muted-foreground leading-none hidden sm:block">Intelligent Robot Fleet Management</p>
+            <h1 className="text-base sm:text-lg font-bold text-foreground">SparkX</h1>
+            <p className="text-xs text-muted-foreground leading-none hidden sm:block">Intelligent Robot Fleet Management Hub</p>
           </div>
         </div>
 
@@ -93,17 +93,6 @@ const Header = () => {
             ) : (
               <Moon className="w-5 h-5" />
             )}
-          </Button>
-          
-          {/* Notifications Button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            onClick={() => navigate("/alerts")}
-          >
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
           </Button>
 
           {/* User Profile Dropdown */}

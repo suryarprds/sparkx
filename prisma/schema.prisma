@@ -16,6 +16,12 @@ datasource db {
 
 
 
+
+
+
+
+
+
 // ============================================================================
 // CORE ROBOT TABLES
 // ============================================================================
@@ -77,6 +83,7 @@ model Robot {
   chargeHistory         ChargeHistory[]
   componentHealth       ComponentHealth[]
   predictiveAlerts      PredictiveAlert[]
+  tasks                 RobotTask[]
 
   @@index([status])
   @@index([country, state, region])
@@ -512,4 +519,52 @@ model RobotConfiguration {
   @@index([category]) // Browse configs by category
   @@index([robotId, category]) // Robot-specific config browsing
   @@map("robot_configurations")
+}
+
+// ============================================================================
+// TASK MANAGEMENT
+// ============================================================================
+
+model RobotTask {
+  id                  Int       @id @default(autoincrement())
+  robotId             String    @map("robot_id")
+  
+  // Task Information
+  taskName            String    @map("task_name")
+  taskType            String    @map("task_type") // 'navigation', 'inspection', 'delivery', 'charging', 'maintenance', 'custom'
+  description         String?
+  priority            String    @default("medium") // 'low', 'medium', 'high', 'critical'
+  
+  // Task Status
+  status              String    @default("pending") // 'pending', 'in_progress', 'completed', 'failed', 'cancelled'
+  progress            Float     @default(0) // 0-100%
+  
+  // Task Schedule
+  scheduledStartAt    DateTime? @map("scheduled_start_at")
+  actualStartAt       DateTime? @map("actual_start_at")
+  estimatedEndAt      DateTime? @map("estimated_end_at")
+  actualEndAt         DateTime? @map("actual_end_at")
+  
+  // Task Details
+  sourceLocation      String?   @map("source_location")
+  targetLocation      String?   @map("target_location")
+  payload             String?   // JSON string for task-specific data
+  
+  // Task Results
+  result              String?   // 'success', 'partial_success', 'failed'
+  failureReason       String?   @map("failure_reason")
+  outputData          String?   @map("output_data") // JSON string for task results
+  
+  // Metadata
+  assignedBy          String?   @map("assigned_by")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  robot               Robot     @relation(fields: [robotId], references: [id], onDelete: Cascade)
+  
+  @@index([robotId, status])
+  @@index([robotId, createdAt(sort: Desc)])
+  @@index([status, priority])
+  @@map("robot_tasks")
 }

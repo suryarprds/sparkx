@@ -115,6 +115,9 @@ const Alerts = () => {
   };
 
   const unresolvedCount = apiAlerts.filter((a) => !a.isResolved).length;
+  const resolvedCount = apiAlerts.filter((a) => a.isResolved).length;
+  const criticalUnresolvedCount = apiAlerts.filter((a) => !a.isResolved && a.severity === "critical").length;
+  const acknowledgedUnresolvedCount = apiAlerts.filter((a) => !a.isResolved && a.isAcknowledged).length;
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -181,18 +184,19 @@ const Alerts = () => {
         </Card>
         <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Critical</span>
-            <p className="text-xl sm:text-2xl font-bold text-destructive">
-              {apiAlerts.filter((a) => a.severity === "critical").length}
+            <span className="text-xs font-semibold text-muted-foreground">Resolved</span>
+            <p className="text-xl sm:text-2xl font-bold text-success">
+              {resolvedCount}
             </p>
           </div>
         </Card>
         <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Acknowledged</span>
-            <p className="text-xl sm:text-2xl font-bold text-success">
-              {apiAlerts.filter((a) => a.isAcknowledged).length}
+            <span className="text-xs font-semibold text-muted-foreground">Critical</span>
+            <p className="text-xl sm:text-2xl font-bold text-destructive">
+              {criticalUnresolvedCount}
             </p>
+            <p className="text-xs text-muted-foreground">Unresolved</p>
           </div>
         </Card>
       </div>

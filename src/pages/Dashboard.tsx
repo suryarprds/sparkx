@@ -33,6 +33,8 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -40,8 +42,26 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, Battery, Signal, Thermometer, MapPin, Eye, Search, X, Filter, ArrowUpDown, Wifi, WifiOff, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, TrendingUp, Zap } from "lucide-react";
-import { useRobots, useBatteryTrends, useTemperatureTrends } from "@/hooks/useAPI";
+import { Activity, Battery, Signal, Thermometer, MapPin, Eye, Search, X, Filter, ArrowUpDown, Wifi, WifiOff, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, TrendingUp, Zap, AlertTriangle, Radio } from "lucide-react";
+import { 
+  useRobots, 
+  useBatteryTrends, 
+  useTemperatureTrends,
+  useFleetSummary,
+  useUptimeTrends,
+  useActiveIdleTrends,
+  useAlertTrends,
+  useSensorHealth,
+  useFirmwareDistribution,
+  useMaintenanceStatus,
+  useNetworkLatency,
+  useDataIngestion,
+  useTaskCompletion,
+  useResourceUsage,
+  useRobotMapLocations,
+  useAlerts
+} from "@/hooks/useAPI";
+import RobotWorldMap from "@/components/RobotWorldMap";
 import { Robot, ROBOT_CONFIG } from "@/types/robot";
 import {
   getRobotMetrics,
@@ -60,8 +80,39 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   
+  // Map selection states
+  const [selectedMapRegion, setSelectedMapRegion] = useState<string | null>(null);
+  const [selectedMapCountry, setSelectedMapCountry] = useState<string | null>(null);
+  
   // Fetch robots from API
   const { data: robots = [], isLoading, error } = useRobots();
+  
+  // Fetch alerts from API
+  const { data: alerts = [] } = useAlerts();
+  
+  // Analytics filter params based on map selection
+  const analyticsFilterParams = useMemo(() => {
+    const params: { region?: string; country?: string } = {};
+    if (selectedMapRegion) params.region = selectedMapRegion;
+    if (selectedMapCountry) params.country = selectedMapCountry;
+    return Object.keys(params).length > 0 ? params : undefined;
+  }, [selectedMapRegion, selectedMapCountry]);
+  
+  // Fetch analytics data
+  const { data: fleetSummary } = useFleetSummary();
+  const { data: batteryTrendData = [] } = useBatteryTrends(analyticsFilterParams);
+  const { data: temperatureTrendData = [] } = useTemperatureTrends(analyticsFilterParams);
+  const { data: uptimeTrendData = [] } = useUptimeTrends();
+  const { data: activeIdleData = [] } = useActiveIdleTrends(analyticsFilterParams);
+  const { data: alertTrendData = [] } = useAlertTrends();
+  const { data: sensorHealthData = [] } = useSensorHealth();
+  const { data: firmwareData = [] } = useFirmwareDistribution();
+  const { data: maintenanceData } = useMaintenanceStatus();
+  const { data: networkLatencyData = [] } = useNetworkLatency();
+  const { data: dataIngestionData = [] } = useDataIngestion();
+  const { data: taskCompletionData = [] } = useTaskCompletion(analyticsFilterParams);
+  const { data: resourceUsageData = [] } = useResourceUsage();
+  const { data: robotMapLocations = [] } = useRobotMapLocations();
   
   // Data is always live with React Query auto-refetch
   const isLive = true;
@@ -78,9 +129,51 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
+  // Chart colors
+  const COLORS = {
+    primary: '#3b82f6',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    purple: '#a855f7',
+    cyan: '#06b6d4',
+  };
+
   // Calculate KPI metrics dynamically from robot data
   const metrics = getRobotMetrics(robots);
   const filterOptions = getFilterOptions(robots);
+  
+  // Calculate total unresolved alerts and critical alerts from actual alerts data
+  const totalUnresolvedAlerts = alerts.filter(alert => !alert.isResolved).length;
+  const totalCriticalAlerts = alerts.filter(alert => !alert.isResolved && alert.severity === 'critical').length;
+
+  // Filter robots based on map selection for analytics
+  const filteredRobotsForAnalytics = useMemo(() => {
+    let filtered = robots;
+    if (selectedMapRegion) {
+      filtered = filtered.filter(robot => robot.region === selectedMapRegion);
+    }
+    if (selectedMapCountry) {
+      filtered = filtered.filter(robot => robot.country === selectedMapCountry);
+    }
+    return filtered;
+  }, [robots, selectedMapRegion, selectedMapCountry]);
+  
+  // Compute filtered metrics for display
+  const filteredMetrics = useMemo(() => {
+    return getRobotMetrics(filteredRobotsForAnalytics);
+  }, [filteredRobotsForAnalytics]);
+  
+  // Get filter description for display
+  const filterDescription = useMemo(() => {
+    if (selectedMapCountry) {
+      return `Showing data for ${selectedMapCountry}`;
+    }
+    if (selectedMapRegion) {
+      return `Showing data for ${selectedMapRegion} region`;
+    }
+    return null;
+  }, [selectedMapRegion, selectedMapCountry]);
 
   // Get unique values for filters from filterOptions
   const { locations: uniqueLocations, countries: uniqueCountries, states: uniqueStates, regions: uniqueRegions } = filterOptions;
@@ -171,12 +264,6 @@ const Dashboard = () => {
 
   const temperatureDistribution = useMemo(() => getTemperatureDistribution(robots), [robots]);
 
-  // Battery trend data from API (24h historical)
-  const { data: batteryTrendData = [] } = useBatteryTrends();
-
-  // Temperature trend data from API (24h historical)
-  const { data: temperatureTrendData = [] } = useTemperatureTrends();
-
   const locationStats = useMemo(() => getLocationStats(robots), [robots]);
 
   const regionStats = useMemo(() => {
@@ -230,17 +317,9 @@ const Dashboard = () => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">Fleet Health</span>
-              <Activity className="w-4 h-4 text-primary" />
+              <TrendingUp className="w-4 h-4 text-primary" />
             </div>
-            <div className="flex items-baseline gap-1">
-              <p className="text-xl sm:text-2xl font-bold text-primary">{metrics.fleetHealth}%</p>
-            </div>
-            <div className="w-full bg-secondary/50 rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-success h-1.5 rounded-full transition-all"
-                style={{ width: `${metrics.fleetHealth}%` }}
-              />
-            </div>
+            <p className="text-xl sm:text-2xl font-bold text-primary">{metrics.fleetHealth}%</p>
           </div>
         </Card>
 
@@ -249,7 +328,7 @@ const Dashboard = () => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">Online</span>
-              <Activity className="w-4 h-4 text-success" />
+              <Wifi className="w-4 h-4 text-success" />
             </div>
             <p className="text-xl sm:text-2xl font-bold text-success">{metrics.statusCounts.online}/{metrics.total}</p>
           </div>
@@ -263,12 +342,14 @@ const Dashboard = () => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">Alerts</span>
-              <Activity className={`w-4 h-4 ${metrics.criticalAlerts > 0 ? 'text-destructive animate-pulse' : 'text-success'}`} />
+              <AlertTriangle className={`w-4 h-4 ${totalUnresolvedAlerts > 0 ? 'text-destructive animate-pulse' : 'text-success'}`} />
             </div>
-            <p className={`text-xl sm:text-2xl font-bold ${metrics.criticalAlerts > 0 ? 'text-destructive' : 'text-success'}`}>
-              {metrics.criticalAlerts}
+            <p className={`text-xl sm:text-2xl font-bold ${totalUnresolvedAlerts > 0 ? 'text-destructive' : 'text-success'}`}>
+              {totalUnresolvedAlerts}
             </p>
-            <p className="text-xs text-muted-foreground">Requires Attention</p>
+            <p className="text-xs text-muted-foreground">
+              {totalUnresolvedAlerts > 0 ? 'Unresolved' : 'All Clear'}
+            </p>
           </div>
         </Card>
 
@@ -277,7 +358,7 @@ const Dashboard = () => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground">Offline</span>
-              <Signal className="w-4 h-4 text-muted-foreground" />
+              <WifiOff className="w-4 h-4 text-muted-foreground" />
             </div>
             <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{metrics.statusCounts.offline}</p>
             <p className="text-xs text-muted-foreground">Disconnected</p>
@@ -286,10 +367,10 @@ const Dashboard = () => {
       </div>
 
       {/* Tabs for Table and Analytics */}
-      <Tabs defaultValue="table" className="w-full">
+      <Tabs defaultValue="analytics" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="table">Robot Fleet</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="analytics">Fleet Summary</TabsTrigger>
+          <TabsTrigger value="table">Fleet Search</TabsTrigger>
         </TabsList>
 
         {/* Robot Table Tab */}
@@ -501,6 +582,7 @@ const Dashboard = () => {
                         </PopoverContent>
                       </Popover>
                     </TableHead>
+                    <TableHead>Country</TableHead>
                     <TableHead className="text-right w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -538,6 +620,9 @@ const Dashboard = () => {
                           <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           <span className="text-sm truncate">{robot.location}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{robot.country || 'N/A'}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -591,7 +676,7 @@ const Dashboard = () => {
                     </div>
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
                       <MapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate">{robot.location}</span>
+                      <span className="truncate">{robot.location} • {robot.country || 'N/A'}</span>
                     </div>
                     <Button
                       size="sm"
@@ -691,195 +776,123 @@ const Dashboard = () => {
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6 mt-0">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Fleet Analytics
-          </h2>
-        </div>
-
-        {/* Distribution Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Status Distribution */}
-          <Card className="p-4 card-gradient border-border">
-            <h3 className="font-semibold text-sm sm:text-base mb-4">Robot Status Distribution</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={statusDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {statusDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Battery Level Distribution */}
-          <Card className="p-4 card-gradient border-border">
-            <h3 className="font-semibold text-sm sm:text-base mb-4">Battery Level Distribution</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={batteryDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {batteryDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
-
-        {/* Battery Trend Chart */}
-        <Card className="p-4 card-gradient border-border">
-          <h3 className="font-semibold text-sm sm:text-base mb-4">Battery Level Trends (24h)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={batteryTrendData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis dataKey="time" className="fill-muted-foreground" />
-              <YAxis className="fill-muted-foreground" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "hsl(var(--card))", 
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "0.5rem"
-                }} 
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                itemStyle={{ color: "hsl(var(--foreground))" }}
+          <div className="space-y-6">
+            {/* Fleet Geographic View */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Fleet Geographic View</h2>
+              <RobotWorldMap 
+                locations={robotMapLocations} 
+                onRegionChange={setSelectedMapRegion}
+                onCountryChange={setSelectedMapCountry}
               />
-              <Legend />
-              <Line type="monotone" dataKey="avgBattery" stroke="#3b82f6" strokeWidth={2} dot={false} name="Average Battery" />
-              <Line type="monotone" dataKey="maxBattery" stroke="#10b981" strokeWidth={2} dot={false} name="Max Battery" />
-              <Line type="monotone" dataKey="minBattery" stroke="#ef4444" strokeWidth={2} dot={false} name="Min Battery" />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
+            </div>
 
-        {/* Temperature Distribution & Trends */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Temperature Distribution */}
-          <Card className="p-4 card-gradient border-border">
-            <h3 className="font-semibold text-sm sm:text-base mb-4">Temperature Ranges</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={temperatureDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {temperatureDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
+            {/* Filter Badge */}
+            {filterDescription && (
+              <Card className="p-3 bg-primary/10 border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                      {filterDescription}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      ({filteredRobotsForAnalytics.length} robots)
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedMapRegion(null);
+                      setSelectedMapCountry(null);
+                    }}
+                  >
+                    Clear Filter
+                  </Button>
+                </div>
+              </Card>
+            )}
 
-          {/* Temperature Trend */}
-          <Card className="p-4 card-gradient border-border">
-            <h3 className="font-semibold text-sm sm:text-base mb-4">Temperature Trends (24h)</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={temperatureTrendData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="time" className="fill-muted-foreground" />
-                <YAxis className="fill-muted-foreground" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.5rem"
-                  }} 
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                  itemStyle={{ color: "hsl(var(--foreground))" }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="avgTemp" stroke="#f59e0b" strokeWidth={2} dot={false} name="Average Temp" />
-                <Line type="monotone" dataKey="maxTemp" stroke="#ef4444" strokeWidth={2} dot={false} name="Max Temp" />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
+            {/* SECTION 2: OPERATIONAL PERFORMANCE */}
+            <div className="mb-4 mt-8">
+              <h3 className="text-lg font-semibold text-primary mb-3">⚡ Operational Performance</h3>
+            </div>
 
-        {/* Regional Distribution Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Regional Distribution Pie Chart */}
-          <Card className="p-4 card-gradient border-border">
-            <h3 className="font-semibold text-sm sm:text-base mb-4">Fleet Distribution by Region</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={regionalDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {regionalDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
+            {/* Active/Idle Status */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <Card className="p-4 card-gradient border-border">
+                <h3 className="font-semibold text-sm sm:text-base mb-4">Active vs Idle Status (24h)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={activeIdleData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                    <Legend />
+                    <Bar dataKey="active" stackId="a" fill={COLORS.success} name="Active" />
+                    <Bar dataKey="idle" stackId="a" fill={COLORS.warning} name="Idle" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
 
-          {/* Country Distribution Bar Chart */}
-          <Card className="p-4 card-gradient border-border">
-            <h3 className="font-semibold text-sm sm:text-base mb-4">Robot Deployment by Country</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={countryStats}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis 
-                  dataKey="country" 
-                  className="fill-muted-foreground" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis className="fill-muted-foreground" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "0.5rem"
-                  }} 
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                  itemStyle={{ color: "hsl(var(--foreground))" }}
-                />
-                <Bar dataKey="count" fill="#10b981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </div>
-      </div>
+              <Card className="p-4 card-gradient border-border">
+                <h3 className="font-semibold text-sm sm:text-base mb-4">Task Completion Status (24h)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={taskCompletionData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                    <Legend />
+                    <Bar dataKey="succeeded" stackId="a" fill={COLORS.success} name="Succeeded" />
+                    <Bar dataKey="failed" stackId="a" fill={COLORS.danger} name="Failed" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            </div>
+
+            {/* SECTION 3: HEALTH MONITORING */}
+            <div className="mb-4 mt-8">
+              <h3 className="text-lg font-semibold text-primary mb-3">🏥 Health Monitoring</h3>
+            </div>
+
+            {/* Battery & Temperature Trends */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <Card className="p-4 card-gradient border-border">
+                <h3 className="font-semibold text-sm sm:text-base mb-4">Battery Level Trends (24h)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={batteryTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="avgBattery" stroke={COLORS.primary} strokeWidth={2} name="Avg" />
+                    <Line type="monotone" dataKey="maxBattery" stroke={COLORS.success} strokeWidth={2} name="Max" />
+                    <Line type="monotone" dataKey="minBattery" stroke={COLORS.danger} strokeWidth={2} name="Min" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+
+              <Card className="p-4 card-gradient border-border">
+                <h3 className="font-semibold text-sm sm:text-base mb-4">Temperature Monitoring (24h)</h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={temperatureTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="time" />
+                    <YAxis />
+                    <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="avgTemp" stroke={COLORS.warning} strokeWidth={2} name="Avg Temp" />
+                    <Line type="monotone" dataKey="maxTemp" stroke={COLORS.danger} strokeWidth={2} name="Max Temp" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            </div>
+
+            {/* End of Analytics Sections */}
+
+          </div>
         </TabsContent>
       </Tabs>
     </div>

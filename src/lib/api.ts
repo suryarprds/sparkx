@@ -83,6 +83,31 @@ export const robotAPI = {
 
   // Get predictive alerts
   getPredictiveAlerts: (id: string) => fetchAPI<any[]>(`/robots/${id}/predictive-alerts`),
+  
+  // Get robot tasks
+  getTasks: (id: string, status?: string) => {
+    const query = status ? `?status=${status}` : '';
+    return fetchAPI<any[]>(`/robots/${id}/tasks${query}`);
+  },
+
+  // Get current task
+  getCurrentTask: (id: string) => fetchAPI<any>(`/robots/${id}/tasks/current`),
+
+  // Get pending tasks
+  getPendingTasks: (id: string) => fetchAPI<any[]>(`/robots/${id}/tasks/pending`),
+
+  // Get task history
+  getTaskHistory: (id: string, limit?: number) => {
+    const query = limit ? `?limit=${limit}` : '';
+    return fetchAPI<any[]>(`/robots/${id}/tasks/history${query}`);
+  },
+  
+  // Update robot position
+  updatePosition: (id: string, position: { latitude: number; longitude: number; heading?: number }) =>
+    fetchAPI<any>(`/robots/${id}/position`, {
+      method: 'PATCH',
+      body: JSON.stringify(position),
+    }),
 };
 
 // Alert API
@@ -139,17 +164,150 @@ export const statsAPI = {
 // Analytics API
 export const analyticsAPI = {
   // Get battery trends (last 24 hours)
-  getBatteryTrends: () => fetchAPI<Array<{
-    time: string;
-    avgBattery: number;
-    minBattery: number;
-    maxBattery: number;
-  }>>('/analytics/battery-trends'),
+  getBatteryTrends: (params?: { region?: string; country?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.region) query.append('region', params.region);
+    if (params?.country) query.append('country', params.country);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return fetchAPI<Array<{
+      time: string;
+      avgBattery: number;
+      minBattery: number;
+      maxBattery: number;
+    }>>(`/analytics/battery-trends${queryString}`);
+  },
 
   // Get temperature trends (last 24 hours)
-  getTemperatureTrends: () => fetchAPI<Array<{
+  getTemperatureTrends: (params?: { region?: string; country?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.region) query.append('region', params.region);
+    if (params?.country) query.append('country', params.country);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return fetchAPI<Array<{
+      time: string;
+      avgTemp: number;
+      maxTemp: number;
+    }>>(`/analytics/temperature-trends${queryString}`);
+  },
+  
+  // Get uptime/availability trends
+  getUptimeTrends: () => fetchAPI<Array<{
     time: string;
+    availability: number;
+    activeRobots: number;
+    downtimeMinutes: number;
+  }>>('/analytics/uptime-trends'),
+  
+  // Get active vs idle robots
+  getActiveIdleTrends: (params?: { region?: string; country?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.region) query.append('region', params.region);
+    if (params?.country) query.append('country', params.country);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return fetchAPI<Array<{
+      time: string;
+      active: number;
+      idle: number;
+    }>>(`/analytics/active-idle-trends${queryString}`);
+  },
+  
+  // Get alert trends
+  getAlertTrends: () => fetchAPI<Array<{
+    time: string;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    total: number;
+  }>>('/analytics/alert-trends'),
+  
+  // Get sensor health
+  getSensorHealth: () => fetchAPI<Array<{
+    sensor: string;
+    healthy: number;
+    total: number;
+    percentage: number;
+  }>>('/analytics/sensor-health'),
+  
+  // Get firmware distribution
+  getFirmwareDistribution: () => fetchAPI<Array<{
+    version: string;
+    count: number;
+  }>>('/analytics/firmware-distribution'),
+  
+  // Get maintenance status
+  getMaintenanceStatus: () => fetchAPI<{
+    inWindow: number;
+    overdue: number;
+    completed: number;
+    scheduled: number;
+    total: number;
+  }>('/analytics/maintenance-status'),
+  
+  // Get network latency
+  getNetworkLatency: () => fetchAPI<Array<{
+    region: string;
+    avgLatency: number;
+    count: number;
+    quality: string;
+  }>>('/analytics/network-latency'),
+  
+  // Get data ingestion volume
+  getDataIngestion: () => fetchAPI<Array<{
+    time: string;
+    messagesPerMinute: number;
+    totalMessages: number;
+  }>>('/analytics/data-ingestion'),
+  
+  // Get task completion rate
+  getTaskCompletion: (params?: { region?: string; country?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.region) query.append('region', params.region);
+    if (params?.country) query.append('country', params.country);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return fetchAPI<Array<{
+      time: string;
+      succeeded: number;
+      failed: number;
+      total: number;
+      successRate: number;
+    }>>(`/analytics/task-completion${queryString}`);
+  },
+  
+  // Get CPU/memory usage
+  getResourceUsage: () => fetchAPI<Array<{
+    time: string;
+    avgCpu: number;
+    avgMemory: number;
+  }>>('/analytics/resource-usage'),
+  
+  // Get fleet summary
+  getFleetSummary: () => fetchAPI<{
+    totalRobots: number;
+    activeRobots: number;
+    fleetUptime: number;
+    avgBattery: number;
     avgTemp: number;
-    maxTemp: number;
-  }>>('/analytics/temperature-trends'),
+    totalAlerts: number;
+    criticalAlerts: number;
+    highAlerts: number;
+    messagesPerMinute: number;
+    lastUpdated: string;
+  }>('/analytics/fleet-summary'),
+
+  // Get robot map locations
+  getRobotMapLocations: () => fetchAPI<Array<{
+    id: string;
+    name: string;
+    coordinates: [number, number];
+    status: 'healthy' | 'warning' | 'critical';
+    activeRobots: number;
+    totalRobots: number;
+    alerts: number;
+    uptime: number;
+    country?: string;
+    region?: string;
+  }>>('/analytics/robot-map-locations'),
 };
+
+

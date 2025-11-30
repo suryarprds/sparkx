@@ -25,6 +25,7 @@ import { Vec3 } from 'cannon-es';
 import { initPhysics, stepPhysics, addStaticBox } from '../sim/physics';
 import { createRobot, updateRobot, Humanoid } from '../sim/robot';
 import { setupControls, inputState } from '../sim/controls';
+import { useUpdateRobotPosition, useRobotTelemetry } from '@/hooks/useAPI';
 
 interface RobotSimulationProps {
   robotId?: string;
@@ -39,10 +40,95 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
   const [activeDirection, setActiveDirection] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [moveSpeed, setMoveSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
-  const [controlMode, setControlMode] = useState<ControlMode>('standby');
+  const [controlMode, setControlMode] = useState<ControlMode>(() => {
+    // Restore last control mode from localStorage, default to standby
+    const saved = localStorage.getItem(`robot-${robotId}-control-mode`);
+    return (saved as ControlMode) || 'standby';
+  });
   const [showHandoverConfirm, setShowHandoverConfirm] = useState(false);
   const animationFrameRef = useRef<number | null>(null);
   const autonomousIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autonomousPatrolIndexRef = useRef<number>(0);
+  const cameraAngleRef = useRef<number>(0);
+  const controlModeRef = useRef<ControlMode>(controlMode);
+  
+  // Fetch latest telemetry to get last known GPS position
+  const { data: telemetryData } = useRobotTelemetry(robotId || '', { limit: 1 });
+  
+  // GPS coordinates state - initialized from telemetry
+  const [gpsCoordinates, setGpsCoordinates] = useState({
+    latitude: telemetryData?.[0]?.latitude || 37.7749,
+    longitude: telemetryData?.[0]?.longitude || -122.4194,
+    heading: 0,
+  });
+  const lastPositionUpdateRef = useRef<number>(Date.now());
+  const robot3DPositionRef = useRef({ x: 0, z: 0 });
+  const gpsCoordinatesRef = useRef({ latitude: 0, longitude: 0, heading: 0 });
+  
+  // Position update mutation
+  const updatePositionMutation = useUpdateRobotPosition();
+  
+  // Update GPS coordinates when telemetry data loads
+  useEffect(() => {
+    if (telemetryData?.[0]) {
+      setGpsCoordinates(prev => ({
+        latitude: telemetryData[0].latitude || prev.latitude,
+        longitude: telemetryData[0].longitude || prev.longitude,
+        heading: prev.heading,
+      }));
+    }
+  }, [telemetryData]);
+  
+  // Sync gpsCoordinatesRef whenever gpsCoordinates state changes
+  useEffect(() => {
+    gpsCoordinatesRef.current = gpsCoordinates;
+  }, [gpsCoordinates]);
+  
+  // GPS conversion utilities - heavily amplified for visible map changes
+  const metersToLatitude = (meters: number) => (meters * 50) / 111320; // ~111km per degree, amplified 50x
+  const metersToLongitude = (meters: number, latitude: number) => 
+    (meters * 50) / (111320 * Math.cos(latitude * Math.PI / 180)); // amplified 50x
+  
+  // Update GPS based on 3D movement
+  // Update GPS based on 3D movement - calculates and returns new coordinates
+  const updateGPSFromMovement = (deltaX: number, deltaZ: number, isTranslational: boolean) => {
+    if (!isTranslational) return null; // Skip for rotations
+    
+    const latChange = metersToLatitude(deltaZ);
+    const lngChange = metersToLongitude(deltaX, gpsCoordinatesRef.current.latitude);
+    
+    const updated = {
+      latitude: gpsCoordinatesRef.current.latitude + latChange,
+      longitude: gpsCoordinatesRef.current.longitude + lngChange,
+      heading: gpsCoordinatesRef.current.heading,
+    };
+    
+    setGpsCoordinates(updated);
+    return updated;
+  };
+  
+  // Send GPS update to backend (debounced)
+  const sendGPSUpdate = (coords?: typeof gpsCoordinates) => {
+    const now = Date.now();
+    if (now - lastPositionUpdateRef.current < 2000 || !robotId) return; // Min 2 seconds between updates
+    
+    lastPositionUpdateRef.current = now;
+    const coordsToSend = coords || gpsCoordinatesRef.current;
+    updatePositionMutation.mutate({
+      id: robotId,
+      latitude: coordsToSend.latitude,
+      longitude: coordsToSend.longitude,
+      heading: coordsToSend.heading,
+    });
+  };
+  
+  // Save control mode to localStorage
+  useEffect(() => {
+    if (robotId) {
+      localStorage.setItem(`robot-${robotId}-control-mode`, controlMode);
+    }
+    controlModeRef.current = controlMode;
+  }, [controlMode, robotId]);
   
   // Update robot speed when moveSpeed changes
   useEffect(() => {
@@ -52,28 +138,86 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
     }
   }, [moveSpeed]);
 
-  // Autonomous mode simulation (UI only - actual robot autonomy handled by backend)
+  // Ensure robot is stopped when in standby mode
+  useEffect(() => {
+    if (controlMode === 'standby' && robotRef.current) {
+      robotRef.current.stop();
+      setActiveDirection(null);
+      setIsOperating(false);
+    }
+  }, [controlMode]);
+
+  // Autonomous mode with structured patrol pattern
   useEffect(() => {
     if (controlMode === 'autonomous' && robotRef.current) {
-      // Simulate autonomous behavior with random movements for visualization
-      // Note: This is for 3D visualization only, not real robot control data
+      // Patrol waypoints: square pattern with rotations
+      const patrolSequence = [
+        { action: 'forward', duration: 2500, translational: true },
+        { action: 'rotateRight', duration: 800, translational: false },
+        { action: 'forward', duration: 2500, translational: true },
+        { action: 'rotateRight', duration: 800, translational: false },
+        { action: 'forward', duration: 2500, translational: true },
+        { action: 'rotateRight', duration: 800, translational: false },
+        { action: 'forward', duration: 2500, translational: true },
+        { action: 'rotateRight', duration: 800, translational: false },
+      ];
+      
       const performAutonomousAction = () => {
-        if (!robotRef.current || controlMode !== 'autonomous') return;
+        if (!robotRef.current) return;
         
-        const actions = ['forward', 'left', 'right', 'rotateLeft', 'rotateRight'];
-        const randomAction = actions[Math.floor(Math.random() * actions.length)];
+        const currentMove = patrolSequence[autonomousPatrolIndexRef.current];
+        const oldPos = {
+          x: robotRef.current.parts.torso.body.position.x,
+          z: robotRef.current.parts.torso.body.position.z
+        };
         
-        // Execute action for a short duration
-        handleDirectionPress(randomAction);
+        // Execute action directly on robot
+        const robot = robotRef.current;
+        const speedMultiplier = moveSpeed === 'slow' ? 0.5 : moveSpeed === 'fast' ? 2 : 1;
+        robot.setSpeed(speedMultiplier);
+        
+        switch (currentMove.action) {
+          case 'forward':
+            robot.moveForward();
+            break;
+          case 'backward':
+            robot.moveBackward();
+            break;
+          case 'rotateLeft':
+            robot.rotateRight();
+            break;
+          case 'rotateRight':
+            robot.rotateLeft();
+            break;
+        }
+        
         setTimeout(() => {
-          if (controlMode === 'autonomous') {
-            handleDirectionRelease();
+          if (robotRef.current) {
+            robotRef.current.stop();
+            
+            // Track position change and update GPS
+            if (currentMove.translational) {
+              const newPos = {
+                x: robotRef.current.parts.torso.body.position.x,
+                z: robotRef.current.parts.torso.body.position.z
+              };
+              const deltaX = newPos.x - oldPos.x;
+              const deltaZ = newPos.z - oldPos.z;
+              robot3DPositionRef.current = newPos;
+              const newCoords = updateGPSFromMovement(deltaX, deltaZ, true);
+              if (newCoords) sendGPSUpdate(newCoords);
+            }
+            
+            // Move to next waypoint
+            autonomousPatrolIndexRef.current = 
+              (autonomousPatrolIndexRef.current + 1) % patrolSequence.length;
           }
-        }, 1000 + Math.random() * 2000); // 1-3 seconds
+        }, currentMove.duration);
       };
 
-      // Start autonomous behavior
-      autonomousIntervalRef.current = setInterval(performAutonomousAction, 3000);
+      // Start autonomous patrol immediately and then at intervals
+      performAutonomousAction();
+      autonomousIntervalRef.current = setInterval(performAutonomousAction, 3500);
       
       return () => {
         if (autonomousIntervalRef.current) {
@@ -95,7 +239,11 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
   const confirmTakeControl = () => {
     setControlMode('manual');
     setShowHandoverConfirm(false);
-    // Stop any ongoing autonomous actions
+    // Stop any ongoing autonomous actions immediately
+    if (autonomousIntervalRef.current) {
+      clearInterval(autonomousIntervalRef.current);
+      autonomousIntervalRef.current = null;
+    }
     if (robotRef.current) {
       robotRef.current.stop();
     }
@@ -141,8 +289,42 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
     const grid = new THREE.GridHelper(200, 200, 0x555555, 0x333333);
     scene.add(grid);
 
+    // Create checkerboard floor pattern with elegant colors
+    function createCheckerboardTexture(squareSize = 16) {
+      const canvas = document.createElement('canvas');
+      canvas.width = squareSize * 2;
+      canvas.height = squareSize * 2;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Color 1: Elegant dark charcoal
+        ctx.fillStyle = '#1f2937';
+        ctx.fillRect(0, 0, squareSize * 2, squareSize * 2);
+        
+        // Color 2: Soft pearl white
+        ctx.fillStyle = '#f3f4f6';
+        for (let i = 0; i < 2; i++) {
+          for (let j = 0; j < 2; j++) {
+            if ((i + j) % 2 === 1) {
+              ctx.fillRect(i * squareSize, j * squareSize, squareSize, squareSize);
+            }
+          }
+        }
+      }
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.repeat.set(12.5, 12.5);
+      texture.magFilter = THREE.LinearFilter;
+      texture.minFilter = THREE.LinearFilter;
+      return texture;
+    }
+
     const groundGeo = new THREE.PlaneGeometry(200, 200);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x2a2f3a, roughness: 1, metalness: 0 });
+    const checkerTexture = createCheckerboardTexture();
+    const groundMat = new THREE.MeshStandardMaterial({ 
+      map: checkerTexture,
+      roughness: 0.8, 
+      metalness: 0.1,
+      color: 0xffffff
+    });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.receiveShadow = true;
@@ -260,14 +442,27 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
       updateRobot(robot, input, dt);
 
       const torso = robot.parts.torso.mesh.position;
-      controls.setTarget(torso.clone());
+      
+      // 360° camera rotation in autonomous mode
+      if (controlModeRef.current === 'autonomous') {
+        cameraAngleRef.current += dt * 0.3; // Slow rotation speed (0.3 radians per second)
+        const radius = 12; // Distance from robot
+        const height = 5; // Camera height
+        camera.position.x = torso.x + Math.cos(cameraAngleRef.current) * radius;
+        camera.position.z = torso.z + Math.sin(cameraAngleRef.current) * radius;
+        camera.position.y = torso.y + height;
+        camera.lookAt(torso);
+      } else {
+        // Normal control mode - use orbit controls
+        controls.setTarget(torso.clone());
+        controls.update(dt);
+      }
 
       grid.position.x = Math.floor(torso.x);
       grid.position.z = Math.floor(torso.z);
       groundMesh.position.x = Math.floor(torso.x);
       groundMesh.position.z = Math.floor(torso.z);
 
-      controls.update(dt);
       renderer.render(scene, camera);
 
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -283,8 +478,16 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
   }, []);
 
   const handleDirectionPress = (direction: string) => {
-    // Only allow manual control in manual mode
-    if (controlMode !== 'manual') return;
+    // Allow control in both manual and autonomous modes
+    if (controlMode === 'standby') return;
+    
+    // Save position before movement for GPS tracking
+    if (robotRef.current) {
+      robot3DPositionRef.current = {
+        x: robotRef.current.parts.torso.body.position.x,
+        z: robotRef.current.parts.torso.body.position.z
+      };
+    }
     
     setActiveDirection(direction);
     setIsOperating(true);
@@ -320,12 +523,39 @@ export const RobotSimulation = ({ robotId }: RobotSimulationProps) => {
   };
 
   const handleDirectionRelease = () => {
-    const wasJump = activeDirection === 'jump';
+    const currentDirection = activeDirection;
+    const wasJump = currentDirection === 'jump';
+    const wasRotation = currentDirection === 'rotateLeft' || currentDirection === 'rotateRight';
+    const wasTranslational = currentDirection === 'forward' || currentDirection === 'backward';
+    
     setActiveDirection(null);
     setIsOperating(false);
+    
     // Stop all movements except jump
     if (robotRef.current && !wasJump) {
       robotRef.current.stop();
+      
+      // Update GPS for translational movements in manual or autonomous mode
+      if ((controlMode === 'manual' || controlMode === 'autonomous') && wasTranslational) {
+        const newPos = {
+          x: robotRef.current.parts.torso.body.position.x,
+          z: robotRef.current.parts.torso.body.position.z
+        };
+        const deltaX = newPos.x - robot3DPositionRef.current.x;
+        const deltaZ = newPos.z - robot3DPositionRef.current.z;
+        robot3DPositionRef.current = newPos;
+        const newCoords = updateGPSFromMovement(deltaX, deltaZ, true);
+        if (newCoords) sendGPSUpdate(newCoords);
+      }
+      
+      // Update heading for rotational movements
+      if (controlMode === 'manual' && wasRotation && robotRef.current) {
+        const torsoBody = robotRef.current.parts.torso.body;
+        setGpsCoordinates(prev => ({
+          ...prev,
+          heading: (Math.atan2(torsoBody.velocity.x, torsoBody.velocity.z) * 180 / Math.PI) % 360
+        }));
+      }
     }
   };
 

@@ -27,6 +27,7 @@ interface ConnectivityMetrics {
   connectionType: string;
   heartbeatStatus: "healthy" | "degraded" | "missed" | "offline";
   lastHeartbeat: Date;
+  heartbeatInterval: number;
   packetLoss: number;
 }
 
@@ -62,6 +63,7 @@ export function ConnectivityHealthCard() {
     connectionType: "Unknown",
     heartbeatStatus: "healthy",
     lastHeartbeat: new Date(),
+    heartbeatInterval: 10,
     packetLoss: 0,
   });
 
@@ -106,6 +108,7 @@ export function ConnectivityHealthCard() {
         connectionType,
         heartbeatStatus,
         lastHeartbeat: lastSeen,
+        heartbeatInterval: 10,
         packetLoss: latestDiagnostics?.packetLossPercent || 0,
       });
       

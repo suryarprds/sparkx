@@ -177,135 +177,122 @@ function RobotHealthMetricsPanel() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                System performing {healthStatus === "excellent" ? "optimally" : 
-                  healthStatus === "good" ? "well" :
-                  healthStatus === "fair" ? "adequately" : "below standards"}
+                {healthStatus === "excellent" ? "✓ System performing optimally" : 
+                  healthStatus === "good" ? "✓ System performing well" :
+                  healthStatus === "fair" ? "⚠ Monitoring required - potential issues detected" : 
+                  "✗ Critical issues detected - immediate action recommended"}
               </p>
             </div>
           </div>
         </div>
 
         {/* 2-Column Grid Layout with Gauges */}
-        <div className="grid grid-cols-2 gap-3 flex-1 content-start">
-          {/* Battery Gauge */}
-          <div className="p-3 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
-            <div className="flex items-center gap-2 mb-2">
-              <Battery className={`w-4 h-4 ${getBatteryColor(battery)}`} />
-              <span className="text-sm font-semibold text-muted-foreground">Battery</span>
+        <div className="grid grid-cols-2 gap-2 flex-1 content-start">
+          {/* Battery Gauge - Circular */}
+          <div className="p-2 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
+            <div className="flex items-center gap-1 mb-1">
+              <Battery className="w-3 h-3 text-yellow-500" />
+              <span className="text-xs font-semibold text-muted-foreground">Battery</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              {/* Battery Shape */}
-              <div className="relative w-20 h-32 flex-shrink-0">
-                {/* Battery Body */}
-                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-16 h-28 border-4 border-current rounded-lg overflow-hidden" 
-                     style={{ borderColor: battery > 60 ? '#22c55e' : battery > 30 ? '#eab308' : '#ef4444' }}>
-                  {/* Battery Fill */}
-                  <div 
-                    className="absolute bottom-0 left-0 right-0 transition-all duration-500"
-                    style={{ 
-                      height: `${battery}%`,
-                      background: battery > 60 
-                        ? 'linear-gradient(to top, #22c55e, #4ade80)' 
-                        : battery > 30 
-                        ? 'linear-gradient(to top, #eab308, #facc15)'
-                        : 'linear-gradient(to top, #ef4444, #f87171)'
-                    }}
-                  />
-                  {/* Battery Percentage Text */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-bold text-foreground drop-shadow-lg z-10">{battery.toFixed(0)}%</span>
-                  </div>
+            <div className="flex flex-col items-center gap-1">
+              <div className="relative w-16 h-16 flex-shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted/20" />
+                  <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10"
+                    strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - battery / 100)} strokeLinecap="round"
+                    className={battery > 60 ? "text-green-500" : battery > 30 ? "text-yellow-500" : "text-red-500"} />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-base font-bold">{battery.toFixed(0)}</span>
+                  <span className="text-[10px] text-muted-foreground">%</span>
                 </div>
-                {/* Battery Terminal */}
-                <div 
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-2 rounded-t"
-                  style={{ backgroundColor: battery > 60 ? '#22c55e' : battery > 30 ? '#eab308' : '#ef4444' }}
-                />
               </div>
-              <div className="text-sm text-center">
+              <div className="text-xs text-center">
                 <p className="text-muted-foreground font-medium">{calculateRuntime(battery)}</p>
               </div>
             </div>
           </div>
 
-          {/* CPU Load Gauge */}
-          <div className="p-3 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
-            <div className="flex items-center gap-2 mb-2">
-              <Cpu className="w-4 h-4 text-purple-400" />
-              <span className="text-sm font-semibold text-muted-foreground">CPU Load</span>
+          {/* CPU Load Gauge - Circular */}
+          <div className="p-2 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
+            <div className="flex items-center gap-1 mb-1">
+              <Cpu className="w-3 h-3 text-purple-500" />
+              <span className="text-xs font-semibold text-muted-foreground">CPU Load</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="relative w-24 h-24 flex-shrink-0">
+            <div className="flex flex-col items-center gap-1">
+              <div className="relative w-16 h-16 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted/20" />
                   <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10"
                     strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - cpuLoad / 100)} strokeLinecap="round"
-                    className={cpuLoad > 80 ? "text-red-500" : cpuLoad > 60 ? "text-yellow-500" : "text-purple-400"} />
+                    className={cpuLoad > 80 ? "text-red-500" : cpuLoad > 60 ? "text-yellow-500" : "text-purple-500"} />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold">{cpuLoad.toFixed(0)}</span>
-                  <span className="text-xs text-muted-foreground">%</span>
+                  <span className="text-base font-bold">{cpuLoad.toFixed(0)}</span>
+                  <span className="text-[10px] text-muted-foreground">%</span>
                 </div>
               </div>
-              <div className="text-sm text-center">
+              <div className="text-xs text-center">
                 <p className="text-muted-foreground font-medium">{temperature.toFixed(0)}°C</p>
               </div>
             </div>
           </div>
 
-          {/* Memory Gauge */}
-          <div className="p-3 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-4 h-4 text-blue-400" />
-              <span className="text-sm font-semibold text-muted-foreground">Memory</span>
+          {/* Memory Gauge - Circular */}
+          <div className="p-2 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
+            <div className="flex items-center gap-1 mb-1">
+              <Zap className="w-3 h-3 text-blue-500" />
+              <span className="text-xs font-semibold text-muted-foreground">Memory</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="relative w-24 h-24 flex-shrink-0">
+            <div className="flex flex-col items-center gap-1">
+              <div className="relative w-16 h-16 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted/20" />
                   <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10"
                     strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - (latestTelemetry?.memoryUsagePercentage || 45) / 100)} strokeLinecap="round"
-                    className={(latestTelemetry?.memoryUsagePercentage || 45) > 80 ? "text-red-500" : (latestTelemetry?.memoryUsagePercentage || 45) > 60 ? "text-yellow-500" : "text-blue-400"} />
+                    className={(latestTelemetry?.memoryUsagePercentage || 45) > 80 ? "text-red-500" : (latestTelemetry?.memoryUsagePercentage || 45) > 60 ? "text-yellow-500" : "text-blue-500"} />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold">{(latestTelemetry?.memoryUsagePercentage || 45).toFixed(0)}</span>
-                  <span className="text-xs text-muted-foreground">%</span>
+                  <span className="text-base font-bold">{(latestTelemetry?.memoryUsagePercentage || 45).toFixed(0)}</span>
+                  <span className="text-[10px] text-muted-foreground">%</span>
                 </div>
               </div>
-              <div className="text-sm text-center">
-                <p className="text-muted-foreground font-medium">
-                  {latestTelemetry?.memoryUsagePercentage 
+              <div className="text-xs text-center">
+                <p className="text-muted-foreground font-medium text-center">
+                  <span className="block">{latestTelemetry?.memoryUsagePercentage 
                     ? ((latestTelemetry.memoryUsagePercentage / 100) * 8).toFixed(1)
-                    : "3.6"} GB
+                    : "3.6"} GB</span>
+                  <span className="text-[10px] text-muted-foreground/70">/ 8 GB</span>
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Storage Gauge */}
-          <div className="p-3 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity className="w-4 h-4 text-cyan-400" />
-              <span className="text-sm font-semibold text-muted-foreground">Storage</span>
+          {/* Storage Gauge - Circular */}
+          <div className="p-2 rounded-lg bg-background/40 border border-border/30 flex flex-col items-center">
+            <div className="flex items-center gap-1 mb-1">
+              <Activity className="w-3 h-3 text-cyan-500" />
+              <span className="text-xs font-semibold text-muted-foreground">Storage</span>
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="relative w-24 h-24 flex-shrink-0">
+            <div className="flex flex-col items-center gap-1">
+              <div className="relative w-16 h-16 flex-shrink-0">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10" className="text-muted/20" />
                   <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="10"
                     strokeDasharray="251.2" strokeDashoffset={251.2 * (1 - (latestTelemetry?.diskUsagePercentage || 33) / 100)} strokeLinecap="round"
-                    className={(latestTelemetry?.diskUsagePercentage || 33) > 80 ? "text-red-500" : (latestTelemetry?.diskUsagePercentage || 33) > 60 ? "text-yellow-500" : "text-cyan-400"} />
+                    className={(latestTelemetry?.diskUsagePercentage || 33) > 80 ? "text-red-500" : (latestTelemetry?.diskUsagePercentage || 33) > 60 ? "text-yellow-500" : "text-cyan-500"} />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold">{(latestTelemetry?.diskUsagePercentage || 33).toFixed(0)}</span>
-                  <span className="text-xs text-muted-foreground">%</span>
+                  <span className="text-base font-bold">{(latestTelemetry?.diskUsagePercentage || 33).toFixed(0)}</span>
+                  <span className="text-[10px] text-muted-foreground">%</span>
                 </div>
               </div>
-              <div className="text-sm text-center">
-                <p className="text-muted-foreground font-medium">
-                  {latestTelemetry?.diskUsagePercentage 
+              <div className="text-xs text-center">
+                <p className="text-muted-foreground font-medium text-center">
+                  <span className="block">{latestTelemetry?.diskUsagePercentage 
                     ? ((latestTelemetry.diskUsagePercentage / 100) * 128).toFixed(0)
-                    : "42"} GB
+                    : "42"} GB</span>
+                  <span className="text-[10px] text-muted-foreground/70">/ 128 GB</span>
                 </p>
               </div>
             </div>
@@ -316,11 +303,11 @@ function RobotHealthMetricsPanel() {
             <div className="flex items-center gap-3">
               <Wifi className="w-5 h-5 text-success" />
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-semibold text-muted-foreground">Network</span>
                   <span className="text-sm font-bold text-success">WiFi Good · 5G Active</span>
                 </div>
-                <div className="w-full h-2.5 bg-muted/30 rounded-full overflow-hidden">
+                <div className="w-full h-8 bg-muted/30 rounded-full overflow-hidden">
                   <div className="h-full bg-success rounded-full" style={{ width: '85%' }}></div>
                 </div>
               </div>

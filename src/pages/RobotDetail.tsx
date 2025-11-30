@@ -23,6 +23,7 @@ import { SafetyAlertsPanel } from "@/components/SafetyAlertsPanel";
 import { BatteryHealthLifecycle } from "@/components/BatteryHealthLifecycle";
 import { ConnectivityHealthCard } from "@/components/ConnectivityHealthCard";
 import { MaintenancePredictionPanel } from "@/components/MaintenancePredictionPanel";
+import { RobotTasksPanel } from "@/components/RobotTasksPanel";
 
 import { RobotHealthSummary } from "@/components/RobotHealthSummary";
 import {
@@ -56,11 +57,11 @@ const RobotDetail = () => {
   const [batteryTrend, setBatteryTrend] = useState<"up" | "down" | "stable">("down");
   const [cpuTrend, setCpuTrend] = useState<"up" | "down" | "stable">("stable");
   const [tempTrend, setTempTrend] = useState<"up" | "down" | "stable">("stable");
-  const [robotLocation, setRobotLocation] = useState({ 
-    lat: 37.7749, 
-    lng: -122.4194, 
+  const [robotLocation, setRobotLocation] = useState(() => ({ 
+    lat: 0, 
+    lng: 0, 
     speed: 0.5 
-  });
+  }));
   
   // Transform API data to match Robot interface
   const robot: Robot | undefined = robotData ? {
@@ -109,6 +110,8 @@ const RobotDetail = () => {
       const newBattery = robotData.telemetry?.[0]?.batteryPercentage || robotData.battery || 0;
       const newCpuLoad = robotData.telemetry?.[0]?.cpuLoadPercentage || 0;
       const newTemperature = robotData.telemetry?.[0]?.temperatureC || 0;
+      const newLat = robotData.telemetry?.[0]?.latitude || 0;
+      const newLng = robotData.telemetry?.[0]?.longitude || 0;
       
       const batteryChange = newBattery - (battery || 0);
       const cpuChange = newCpuLoad - (cpuLoad || 0);
@@ -117,6 +120,15 @@ const RobotDetail = () => {
       setBattery(newBattery);
       setCpuLoad(newCpuLoad);
       setTemperature(newTemperature);
+      
+      // Update location from latest telemetry
+      if (newLat !== 0 || newLng !== 0) {
+        setRobotLocation(prev => ({
+          lat: newLat,
+          lng: newLng,
+          speed: prev.speed
+        }));
+      }
       
       setBatteryTrend(batteryChange < -0.5 ? "down" : batteryChange > 0.5 ? "up" : "stable");
       setCpuTrend(cpuChange > 2 ? "up" : cpuChange < -2 ? "down" : "stable");
@@ -278,15 +290,40 @@ const RobotDetail = () => {
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div className="text-xs">
-                        <div className="text-warning font-semibold">2 Active</div>
-                        <div className="text-muted-foreground">1 Critical</div>
+                        <div className="text-warning font-semibold">System Nominal</div>
+                        <div className="text-muted-foreground">No Active Alerts</div>
                       </div>
-                      <div className="w-2 h-2 bg-warning rounded-full animate-pulse" />
+                      <div className="w-2 h-2 bg-success rounded-full" />
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4">
                   <SafetyAlertsPanel />
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Task Management - PRIORITY 2.5 */}
+              <AccordionItem value="tasks" className="border-0 card-gradient border border-border rounded-lg overflow-hidden">
+                <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-slate-800/50 transition-colors [&[data-state=open]]:bg-slate-800/30">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-blue-400" />
+                      <div className="text-left">
+                        <h3 className="font-semibold text-base">Task Management</h3>
+                        <p className="text-xs text-muted-foreground">Current, pending, and completed tasks</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right">
+                      <div className="text-xs">
+                        <div className="text-blue-400 font-semibold">Active</div>
+                        <div className="text-muted-foreground">Task in Progress</div>
+                      </div>
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <RobotTasksPanel robotId={id!} />
                 </AccordionContent>
               </AccordionItem>
 
@@ -303,10 +340,10 @@ const RobotDetail = () => {
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div className="text-xs">
-                        <div className="text-success font-semibold">15/16 Active</div>
+                        <div className="text-success font-semibold">All Active</div>
                         <div className="text-muted-foreground">{temperature.toFixed(0)}°C Ambient</div>
                       </div>
-                      <div className="w-2 h-2 bg-warning rounded-full" />
+                      <div className="w-2 h-2 bg-success rounded-full" />
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -328,10 +365,18 @@ const RobotDetail = () => {
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div className="text-xs">
-                        <div className="text-success font-semibold">87% Charge</div>
-                        <div className="text-muted-foreground">94% Health</div>
+                        <div className={`font-semibold ${
+                          battery >= 60 ? 'text-success' :
+                          battery >= 30 ? 'text-warning' :
+                          'text-destructive'
+                        }`}>{battery.toFixed(0)}% Charge</div>
+                        <div className="text-muted-foreground">Healthy</div>
                       </div>
-                      <div className="w-2 h-2 bg-success rounded-full" />
+                      <div className={`w-2 h-2 rounded-full ${
+                        battery >= 60 ? 'bg-success' :
+                        battery >= 30 ? 'bg-warning' :
+                        'bg-destructive'
+                      }`} />
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -353,8 +398,8 @@ const RobotDetail = () => {
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div className="text-xs">
-                        <div className="text-success font-semibold">12ms Latency</div>
-                        <div className="text-muted-foreground">99.4% Uptime</div>
+                        <div className="text-success font-semibold">Connected</div>
+                        <div className="text-muted-foreground">Signal Strong</div>
                       </div>
                       <div className="w-2 h-2 bg-success rounded-full" />
                     </div>
@@ -378,8 +423,8 @@ const RobotDetail = () => {
                     </div>
                     <div className="flex items-center gap-3 text-right">
                       <div className="text-xs">
-                        <div className="text-success font-semibold">Next: 12 days</div>
-                        <div className="text-muted-foreground">Score: 87%</div>
+                        <div className="text-success font-semibold">All Systems OK</div>
+                        <div className="text-muted-foreground">No Issues Detected</div>
                       </div>
                       <div className="w-2 h-2 bg-success rounded-full" />
                     </div>
@@ -459,10 +504,7 @@ const RobotDetail = () => {
                         📍 {robotLocation.lat.toFixed(6)}, {robotLocation.lng.toFixed(6)}
                       </div>
                       
-                      {/* Map locked notice */}
-                      <div className="absolute top-3 right-3 bg-green-600/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                        🔒 Position Locked
-                      </div>
+
                       {/* Precise Robot Position Marker */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <div className="relative">
@@ -480,8 +522,7 @@ const RobotDetail = () => {
                       <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm p-2 rounded text-xs">
                         <p className="font-mono text-primary">{robotLocation.lat.toFixed(6)}° N, {robotLocation.lng.toFixed(6)}° W</p>
                         <p className="text-muted-foreground">Accuracy: ±2m • Speed: {robotLocation.speed.toFixed(1)} m/s</p>
-                        <p className="text-xs text-green-400 mt-1">🔒 Fixed Position View</p>
-                        <p className="text-xs text-yellow-400">Map locked to robot location</p>
+
                       </div>
                       {/* Status indicators */}
                       <div className="absolute bottom-12 right-3 flex flex-col gap-1">
