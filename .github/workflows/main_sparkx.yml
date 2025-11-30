@@ -55,9 +55,9 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
       
-      - name: Install production dependencies only
+      - name: Install server dependencies
         run: |
-          npm ci --omit=dev
+          npm install --omit=dev
           npx prisma generate
       
       - name: Login to Azure
