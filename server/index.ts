@@ -2,16 +2,47 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Middleware
-app.use(cors());
+console.log('🔧 Starting server with configuration:');
+console.log(`   PORT: ${PORT}`);
+console.log(`   NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+console.log(`   isProduction: ${isProduction}`);
+
+// Middleware - CORS configuration for both dev and production
+const allowedOrigins = [
+  'http://localhost:8080',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://sparkx.azurewebsites.net',
+  process.env.CORS_ORIGIN,
+  process.env.AZURE_APP_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: isProduction && allowedOrigins.length > 3 ? allowedOrigins : '*',
+  credentials: true,
+}));
+
 app.use(express.json());
+
+// Serve static files from React app in production
+if (isProduction) {
+  const distPath = path.join(__dirname, '../dist');
+  app.use(express.static(distPath));
+  console.log(`📦 Serving static files from: ${distPath}`);
+}
 
 // BigInt serialization fix for JSON responses
 app.use((req, res, next) => {
@@ -610,10 +641,21 @@ app.get('/api/analytics/temperature-trends', async (req: Request, res: Response)
   }
 });
 
+// Catch-all route for SPA - must be AFTER all API routes
+if (isProduction) {
+  app.get('*', (req: Request, res: Response) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
+
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📊 API available at /api`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔧 Production Mode: ${isProduction}`);
+  console.log(`🔒 CORS Origins: ${allowedOrigins.join(', ')}`);
+  console.log(`📁 Serving static files: ${isProduction ? 'YES (from dist/)' : 'NO (dev mode)'}`);
 });
 
 // Graceful shutdown

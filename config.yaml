@@ -36,6 +36,18 @@ server:
     timeout: 30000
     retry_attempts: 3
 
+# Production Server Configuration (for Azure)
+server_production:
+  port: 8080
+  node_env: "production"
+  cors:
+    origin: "https://sparkx.azurewebsites.net"
+    credentials: true
+  api:
+    base_url: "https://sparkx.azurewebsites.net/api"
+    timeout: 30000
+    retry_attempts: 3
+
 # Prisma Configuration
 prisma:
   log_level: "info"

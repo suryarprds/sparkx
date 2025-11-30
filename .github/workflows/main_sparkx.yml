@@ -25,15 +25,19 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          npm install
+          npm ci
+          npx prisma generate
           npm run build --if-present
           npm run test --if-present
+
+      - name: Zip artifact for deployment
+        run: zip release.zip ./* -r -x "node_modules/*" -x ".git/*" -x "*.log"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,6 +51,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
+      
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+      
+      - name: Install production dependencies
+        run: |
+          npm ci --omit=dev
+          npx prisma generate
       
       - name: Login to Azure
         uses: azure/login@v2
