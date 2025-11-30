@@ -463,7 +463,7 @@ export function RobotJointVisualizer() {
         <div className="w-full lg:w-1/2 relative bg-gradient-to-br from-card to-card/80 border border-border rounded-lg p-2 sm:p-3 overflow-hidden flex items-center justify-center h-full">
           <img 
             ref={imageRef}
-            src="/assets/sparkx_robot.png" 
+            src="/sparkx_robot.png" 
             alt="SparkX Robot" 
             className="w-full h-full object-contain mx-auto rounded-lg"
             onLoad={() => setImageLoaded(true)}
