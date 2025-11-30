@@ -643,7 +643,7 @@ app.get('/api/analytics/temperature-trends', async (req: Request, res: Response)
 
 // Catch-all route for SPA - must be AFTER all API routes
 if (isProduction) {
-  app.get('/:path(*)', (req: Request, res: Response) => {
+  app.use((req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }
