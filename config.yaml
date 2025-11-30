@@ -2,12 +2,12 @@
 # Supports local SQLite and remote Azure PostgreSQL
 
 # Global Control: Set to true for SQLite, false for PostgreSQL
-is_local: true
+is_local: false
 environments:
   local:
     name: "Local SQLite Development"
     provider: "sqlite"
-    database_url: "file:./prisma/dev.db"
+    database_url: "file:./dev.db"
     description: "Local SQLite database for development"
     features:
       - auto_create: true
