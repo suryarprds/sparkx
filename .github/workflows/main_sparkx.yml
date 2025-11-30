@@ -55,7 +55,7 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
       
-      - name: Install production dependencies
+      - name: Install production dependencies only
         run: |
           npm ci --omit=dev
           npx prisma generate
