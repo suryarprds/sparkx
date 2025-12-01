@@ -21,11 +21,6 @@ npm test
 npm run test:coverage
 ```
 
-## Login Credentials
-
-- **Username:** admin
-- **Password:** sparkx2024
-
 ## Documentation
 
 All project documentation has been organized in the **[Docs](./Docs/)** folder:

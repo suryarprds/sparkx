@@ -7,10 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Zap } from 'lucide-react';
 
-// Hardcoded credentials
-const VALID_USERNAME = 'admin';
-const VALID_PASSWORD = 'sparkx2024';
-
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -21,12 +17,13 @@ export default function Login() {
     e.preventDefault();
     setError('');
 
-    if (username === VALID_USERNAME && password === VALID_PASSWORD) {
-      // Store auth token or flag
+    // TODO: Implement proper authentication with backend API
+    // For now, accept any non-empty credentials
+    if (username && password) {
       localStorage.setItem('isAuthenticated', 'true');
       navigate('/');
     } else {
-      setError('Invalid username or password');
+      setError('Please enter both username and password');
     }
   };
 
@@ -79,16 +76,6 @@ export default function Login() {
             <Button type="submit" className="w-full" size="lg">
               Sign In
             </Button>
-
-            <div className="text-center text-sm text-muted-foreground mt-4">
-              <p>Demo Credentials:</p>
-              <p className="font-mono mt-1">
-                <span className="font-semibold">Username:</span> admin
-              </p>
-              <p className="font-mono">
-                <span className="font-semibold">Password:</span> sparkx2024
-              </p>
-            </div>
           </form>
         </CardContent>
       </Card>
