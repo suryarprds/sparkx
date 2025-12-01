@@ -8,7 +8,8 @@ export function getRobotMetrics(robots: Robot[]) {
   const online = robots.filter((r) => r.status === "online").length;
   const charging = robots.filter((r) => r.status === "charging").length;
   const offline = robots.filter((r) => r.status === "offline").length;
-  const error = robots.filter((r) => r.status === "error").length;
+  // Handle both 'error' and 'maintenance'/'idle' as error states
+  const error = robots.filter((r) => r.status === "error" || (r as any).status === "maintenance" || (r as any).status === "idle").length;
   const active = online + charging;
   
   const avgBattery = robots.reduce((sum, r) => sum + r.battery, 0) / (total || 1);

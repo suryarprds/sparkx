@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import swaggerUi from 'swagger-ui-express';
-import swaggerSpec from '../swagger';
+import swaggerSpec from './swagger.js';
 
 dotenv.config();
 

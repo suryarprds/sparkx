@@ -311,7 +311,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4 md:p-6">
       {/* KPI Cards */}
-      <div className="mb-6 sm:mb-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+      <div className="mb-6 sm:mb-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {/* Fleet Health */}
         <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
           <div className="flex flex-col gap-2">
@@ -334,6 +334,42 @@ const Dashboard = () => {
           </div>
         </Card>
 
+        {/* Offline Units */}
+        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Offline</span>
+              <WifiOff className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{metrics.statusCounts.offline}</p>
+            <p className="text-xs text-muted-foreground">Disconnected</p>
+          </div>
+        </Card>
+
+        {/* Charging Units */}
+        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Charging</span>
+              <Battery className="w-4 h-4 text-blue-500" />
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-blue-500">{metrics.statusCounts.charging}</p>
+            <p className="text-xs text-muted-foreground">Recharging</p>
+          </div>
+        </Card>
+
+        {/* Error Units */}
+        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Error</span>
+              <AlertTriangle className="w-4 h-4 text-destructive" />
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-destructive">{metrics.statusCounts.error}</p>
+            <p className="text-xs text-muted-foreground">Needs Attention</p>
+          </div>
+        </Card>
+
         {/* Critical Alerts */}
         <Card 
           className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border cursor-pointer hover:border-primary transition-colors"
@@ -350,18 +386,6 @@ const Dashboard = () => {
             <p className="text-xs text-muted-foreground">
               {totalUnresolvedAlerts > 0 ? 'Unresolved' : 'All Clear'}
             </p>
-          </div>
-        </Card>
-
-        {/* Offline Units */}
-        <Card className="p-3 sm:p-4 bg-gradient-to-br from-card to-card/80 border-border">
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground">Offline</span>
-              <WifiOff className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-xl sm:text-2xl font-bold text-muted-foreground">{metrics.statusCounts.offline}</p>
-            <p className="text-xs text-muted-foreground">Disconnected</p>
           </div>
         </Card>
       </div>
