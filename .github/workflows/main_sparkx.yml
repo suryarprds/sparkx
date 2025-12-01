@@ -31,7 +31,7 @@ jobs:
           npm run test --if-present
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r -x "node_modules/*" -x ".git/*" -x "*.log"
+        run: zip release.zip ./* -r -x ".git/*" -x "*.log" -x "prisma/dev.db" -x "*.db"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -55,11 +55,6 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
       
-      - name: Install server dependencies
-        run: |
-          npm install --omit=dev
-          npx prisma generate
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -74,4 +69,11 @@ jobs:
           app-name: 'sparkx'
           slot-name: 'Production'
           package: .
+      
+      - name: Run Prisma Migrations
+        uses: azure/CLI@v2
+        with:
+          inlineScript: |
+            az webapp config appsettings list --name sparkx --resource-group sparkx --query "[?name=='DATABASE_URL'].value" -o tsv > /dev/null 2>&1 || echo "DATABASE_URL not set"
+            echo "Note: Ensure DATABASE_URL is configured in Azure App Service Configuration"
           

@@ -17,7 +17,7 @@ environments:
   remote:
     name: "Azure PostgreSQL Production"
     provider: "postgresql"
-    database_url: "postgresql://sparkxadmin:PSWD@sparkx.postgres.database.azure.com:5432/postgres?sslmode=require"
+    database_url: "${DATABASE_URL}"
     description: "Remote Azure PostgreSQL database"
     features:
       - ssl_required: true
