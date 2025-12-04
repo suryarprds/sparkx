@@ -29,6 +29,7 @@ jobs:
           npm set audit=false
           npm set fund=false
           npm cache clean --force
+          rm -rf node_modules package-lock.json
           npm ci --no-optional
           npx prisma generate
           npm run build --if-present
